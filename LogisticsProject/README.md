@@ -24,6 +24,7 @@ The `JAVA PROJECTS` view allows you to manage your dependencies. More details ca
 2. Hash Table (Manual HashMap) – Store and retrieve vehicles by registration number or type with constant-time access.
 
 3. Stack – Manage available drivers in LIFO order, ideal for assigning the most recently available driver.
+![some stack operations](image.png)
 
 4. Queue – Assign drivers or process deliveries in FIFO order, simulating real-world dispatching.
 
@@ -42,3 +43,15 @@ The `JAVA PROJECTS` view allows you to manage your dependencies. More details ca
 11. Merge Sort – Efficiently sort vehicles by mileage with guaranteed O(n log n) performance.
 
 12. Quick Sort – Sort fuel usage or delivery ETA with fast average-case performance and in-place partitioning.
+
+## Stack usage
+
+To use stack declare a new object
+        CustomStack<E> stackname = new CustomStack<>(); and add the import (import CustomDataStructures.CustomStack;)
+You can now call the elements using their method definitions
+        stackname.clear(); - pop out all elements.
+        stackname.isEmpty(); - boolean to check if stack is empty.
+        stackname.peek(); - check the last element.
+        stackname.pop(); - remove the last element.
+        stackname.push(element); - add new element.
+        stackname.size(); - check the stack size.
