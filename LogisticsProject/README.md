@@ -46,7 +46,7 @@ The `JAVA PROJECTS` view allows you to manage your dependencies. More details ca
 
 ## Stack usage
 
-To use stack declare a new object
+To use stack, declare a new object
         CustomStack<E> stackname = new CustomStack<>(); and add the import (import CustomDataStructures.CustomStack;)
 You can now call the elements using their method definitions
         stackname.clear(); - pop out all elements.
@@ -55,3 +55,16 @@ You can now call the elements using their method definitions
         stackname.pop(); - remove the last element.
         stackname.push(element); - add new element.
         stackname.size(); - check the stack size.
+
+## List usage
+
+To use list, declare a new object
+        CustomList<String> customList = new CustomList<>(); and add the import (import CustomDataStructures.CustomList;)
+You can now call the elements using their method definitions
+        customList.insertFront(element); - insert element in front.
+        customList.insertBack(element); - insert element at the back.
+        customList.removeFront(); - remove element from the front.
+        customList.removeBack(); - remove element from the back.
+        customList.displayList(); - display all elements in the list.
+        customList.size(); - display the size of the list.
+        customList.clear(); - clear the list from the front.
