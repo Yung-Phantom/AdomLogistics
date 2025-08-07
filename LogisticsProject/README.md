@@ -24,7 +24,6 @@ The `JAVA PROJECTS` view allows you to manage your dependencies. More details ca
 2. Hash Table (Manual HashMap) – Store and retrieve vehicles by registration number or type with constant-time access.
 
 3. Stack – Manage available drivers in LIFO order, ideal for assigning the most recently available driver.
-![some stack operations](image.png)
 
 4. Queue – Assign drivers or process deliveries in FIFO order, simulating real-world dispatching.
 
@@ -56,15 +55,36 @@ You can now call the elements using their method definitions
         stackname.push(element); - add new element.
         stackname.size(); - check the stack size.
 
-## List usage
+## Singly linked list usage
 
-To use list, declare a new object
-        CustomList<String> customList = new CustomList<>(); and add the import (import CustomDataStructures.CustomList;)
+To use singly linked list, declare a new object
+        SinglyLinkedList<E> singlyLinkedList = new SinglyLinkedList<>(); and add the import (import CustomDataStructures.SinglyLinkedList;)
 You can now call the elements using their method definitions
-        customList.insertFront(element); - insert element in front.
-        customList.insertBack(element); - insert element at the back.
-        customList.removeFront(); - remove element from the front.
-        customList.removeBack(); - remove element from the back.
-        customList.displayList(); - display all elements in the list.
-        customList.size(); - display the size of the list.
-        customList.clear(); - clear the list from the front.
+        singlyLinkedList.insertFront(element); - insert element in front.
+        singlyLinkedList.insertBack(element); - insert element at the back.
+        singlyLinkedList.removeFront(); - remove element from the front.
+        singlyLinkedList.removeBack(); - remove element from the back.
+        singlyLinkedList.displayList(); - display all elements in the list.
+        singlyLinkedList.size(); - display the size of the list.
+        singlyLinkedList.clear(); - clear the list from the front.
+        singlyLinkedList.getNodeAt(i) - get a node at i.
+        singlyLinkedList.displayNodeAt(i) - display the node at i
+
+## Doubly linked list usage
+
+To use doubly linked list which extends SinglyLinkedList, declare a new object
+        DoublyLinkedList<E> doublyLinkedList = new DoublyLinkedList<>(); and add the import (import CustomDataStructures.DoublyLinkedList;)
+You can now call the elements using their method definitions
+        doublyLinkedList.insertFront(element); - insert element in front.
+        doublyLinkedList.insertBack(element); - insert element at the back.
+        doublyLinkedList.removeFront(); - remove element from the front.
+        doublyLinkedList.removeBack(); - remove element from the back.
+        doublyLinkedList.displayList(); - display all elements in the list.
+        doublyLinkedList.size(); - display the size of the list.
+        doublyLinkedList.clear(); - clear the list from the front.
+        doublyLinkedList.getNodeAt(i) - get a node at i.
+        doublyLinkedList.displayNodeAt(i) - display the node at i
+        doublyLinkedList.addAt(index, element) - add element after node index.
+        doublyLinkedList.removeAt(index) - remove node at index.
+
+Queue, hash table , tree , priority queue, nested map

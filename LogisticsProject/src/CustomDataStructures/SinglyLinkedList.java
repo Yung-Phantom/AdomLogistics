@@ -1,15 +1,15 @@
 package CustomDataStructures;
 
-public class CustomList<E> {
-    private NodeElements<E> head; //
-    private NodeElements<E> tail; //
-    private int size; // To keep track of the size of the list
+public class SinglyLinkedList<E> {
+    public NodeElements<E> head;
+    public NodeElements<E> tail;
+    public int size; // To keep track of the size of the list
 
-    // constructor to initialize the head, tail and size()
-    public CustomList() {
+    // constructor to initialize the head and tail and get the size
+    public SinglyLinkedList() {
         head = null;
         tail = null;
-        size();
+        size(); // size getter
     }
 
     // Insert at front of the list
@@ -68,14 +68,19 @@ public class CustomList<E> {
 
     public void displayList() {
         NodeElements<E> current = head;
-        System.out.println("<-- Start");
-        while (current != null) {
-            System.out.println(current.data);
-            current = current.next;
+        if (current != null) {
+            System.out.println("<-- Start");
+            while (current != null) {
+                System.out.println(current.data);
+                current = current.next;
+            }
+            System.out.println("End -->");
+        } else {
+            System.out.println("Empty list");
         }
-        System.out.println("End -->");
     }
-    public void clear(){
+
+    public void clear() {
         while (head != null || tail != null) {
             removeFront();
         }
@@ -83,5 +88,26 @@ public class CustomList<E> {
 
     public int size() {
         return size; // Return the size of the stack
+    }
+
+    public NodeElements<E> getNodeAt(int i) {
+        if (i < 0 || i >= size) {
+            return null;
+        }
+        NodeElements<E> current = head;
+        int index = 0;
+        while (index < i) {
+            current = current.next;
+            index++;
+        }
+        return current;
+    }
+    public void displayNodeAt(int i){
+        if (i < 0 || i >= size) {
+            System.out.println("Index out of bounds");
+            return;
+        }
+        E display = getNodeAt(i).data;
+        System.out.println("Node at index " + i + ": " + display);
     }
 }
