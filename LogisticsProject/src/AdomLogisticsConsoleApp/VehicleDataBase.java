@@ -154,7 +154,8 @@ public class VehicleDataBase {
             newEntry.append("          \"mileage\": ").append(vehicleDetails.getElement(2)).append(",\n");
             newEntry.append("          \"fuelUsage\": ").append(vehicleDetails.getElement(3)).append(",\n");
             newEntry.append("          \"driverID\": \"").append(vehicleDetails.getElement(4)).append("\",\n");
-            newEntry.append("          \"maintenanceHistory\": \"").append(vehicleDetails.getElement(5)).append("\"\n");
+            newEntry.append("          \"maintenanceHistory\": \"").append(vehicleDetails.getElement(5)).append("\",\n");
+            newEntry.append("          \"status\": \"").append("!Deleted").append("\"\n");
             newEntry.append("        }\n");
             newEntry.append("      ]\n");
             newEntry.append("    }");
@@ -210,26 +211,26 @@ public class VehicleDataBase {
                     break;
                 case 1:
                     System.out.println("Please enter the registration number.");
-                    searchVehicleString();
+                    searchVehicleString("registrationNumber");
                     break;
                 case 2:
                     searchVehicleType();
                     break;
                 case 3:
                     System.out.println("Please enter the milage as a range. Example: 1000-2000");
-                    searchVehicleDouble();
+                    searchVehicleDouble("mileage");
                     break;
                 case 4:
                     System.out.println("Please enter the fuel usage as a range. Example: 10-20");
-                    searchVehicleDouble();
+                    searchVehicleDouble("fuelUsage");
                     break;
                 case 5:
                     System.out.println("Please enter the driver ID.");
-                    searchVehicleString();
+                    searchVehicleString("driverID");
                     break;
                 case 6:
                     System.out.println("Please enter the maintenance history.");
-                    searchVehicleString();
+                    searchVehicleString("maintenanceHistory");
                     break;
                 case 7:
                     System.out.println("Exiting Adom Logistics System. Goodbye!");
@@ -240,7 +241,7 @@ public class VehicleDataBase {
     }
 
     // Logic to search for a vehicle by string
-    public void searchVehicleString() {
+    public void searchVehicleString(String searchString) {
         validityString(scanner);
         boolean choice = trueFalse;
         String userSearchInputString = userStringInput;
@@ -279,7 +280,7 @@ public class VehicleDataBase {
     }
 
     // Logic to search for a vehicle by double
-    public void searchVehicleDouble() {
+    public void searchVehicleDouble(String searchString) {
         validityDouble(scanner);
         boolean choice = trueFalse;
         double userSearchInputDouble = userDoubleInput;
@@ -341,6 +342,7 @@ public class VehicleDataBase {
 
     public void validityDouble(Scanner scanner) {
         while (true) {
+            scanner.nextLine(); // clear the buffer
             try {
                 userDoubleInput = scanner.nextDouble();
                 if (userDoubleInput >= 0) {
@@ -359,6 +361,7 @@ public class VehicleDataBase {
 
     public void validityString(Scanner scanner) {
         while (true) {
+            scanner.nextLine(); // clear the buffer
             try {
                 userStringInput = scanner.nextLine();
                 if (userStringInput.length() > 0) {
