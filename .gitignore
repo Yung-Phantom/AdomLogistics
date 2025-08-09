@@ -3,3 +3,6 @@
 
 #Ignore the vs settings
 .vscode
+
+#Ignore the jsonStorage.json
+jsonStorage.json
