@@ -12,6 +12,19 @@
           "status": "!Deleted"
         }
       ]
+    },
+    {
+      "Entry 002": [
+        {
+          "registrationNumber": "kijhyugtf",
+          "vehicleType": "van",
+          "mileage": 65.0,
+          "fuelUsage": 54.0,
+          "driverID": "kjhgf",
+          "maintenanceHistory": "jhgf",
+          "status": "!Deleted"
+        }
+      ]
     }
   ]
 }

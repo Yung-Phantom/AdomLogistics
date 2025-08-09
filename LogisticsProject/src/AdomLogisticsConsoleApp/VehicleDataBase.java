@@ -1,5 +1,6 @@
 package AdomLogisticsConsoleApp;
 
+import CustomDataStructures.CustomArrayList;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -7,9 +8,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
-import CustomDataStructures.CustomArrayList;
-
 public class VehicleDataBase {
+
     BannerElements bElements;
     BannerElements addVehicle;
     CustomArrayList<Object> addVehicleDetails;
@@ -116,8 +116,10 @@ public class VehicleDataBase {
     }
 
     public void saveJSON(CustomArrayList<Object> vehicleDetails) {
-        File jsonStorage = new File(
-                "C:/Users/Kotei Justice/Documents/AdomLogistics/LogisticsProject/src/JSONDatabase/jsonStorage.json");
+        // Use a relative path for the JSON storage file
+        File jsonStorageRelative = new File(
+                "LogisticsProject/src/JSONDatabase/jsonStorage.json"); // Changed to relative path
+        File jsonStorage = new File(jsonStorageRelative.getAbsolutePath());
         StringBuilder fileContent = new StringBuilder();
         int entryCount = 1;
 
