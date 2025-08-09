@@ -116,6 +116,12 @@ public class VehicleDataBase {
     }
 
     public void saveJSON(CustomArrayList<Object> vehicleDetails) {
+        // Ensure the JSON storage directory exists
+        File jsonStorageDir = new File("LogisticsProject/src/JSONDatabase").getAbsoluteFile();
+        if (!jsonStorageDir.exists()) {
+            jsonStorageDir.mkdirs();
+        }
+
         // Use a relative path for the JSON storage file
         File jsonStorageRelative = new File(
                 "LogisticsProject/src/JSONDatabase/jsonStorage.json"); // Changed to relative path
