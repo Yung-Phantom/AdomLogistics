@@ -1,0 +1,5 @@
+#Ignore the .class on build
+*.class
+
+#Ignore the vs settings
+.vscode

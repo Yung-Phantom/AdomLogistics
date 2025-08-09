@@ -1,0 +1,17 @@
+{
+  "Adom Logistics": [
+    {
+      "Entry 001": [
+        {
+          "registrationNumber": "registration",
+          "vehicleType": "van",
+          "mileage": 20.0,
+          "fuelUsage": 10.0,
+          "driverID": "gha",
+          "maintenanceHistory": "20/20/20",
+          "status": "!Deleted"
+        }
+      ]
+    }
+  ]
+}
