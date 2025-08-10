@@ -2,8 +2,6 @@ package AdomLogisticsConsoleApp;
 
 import java.util.Scanner;
 
-import CustomDataStructures.CustomSearchSortAlgo.QuickSort;
-
 public class AdomBanner {
     BannerElements bElements;
 
