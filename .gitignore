@@ -5,4 +5,8 @@
 .vscode
 
 #Ignore the jsonStorage.json
-jsonStorage.json
+JSONDatabase/
+
+#Ignore the finalDatabase
+finalDatabase/
+TXTDatabase/
