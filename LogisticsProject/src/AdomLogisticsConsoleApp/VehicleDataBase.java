@@ -209,19 +209,21 @@ public class VehicleDataBase {
 
             for (int i = 0; i < searchResults.size(); i++) {
                 Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
 
                 for (int j = 0; j < typeResults.size(); j++) {
                     Object candidate = typeResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
 
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
+                    if (entry instanceof CustomArrayList && candidate instanceof CustomArrayList) {
+                        CustomArrayList<?> entryList = (CustomArrayList<?>) entry;
+                        CustomArrayList<?> candidateList = (CustomArrayList<?>) candidate;
+
+                        String entryHeader = entryList.getElement(0).toString().trim();
+                        String candidateHeader = candidateList.getElement(0).toString().trim();
+
+                        if (entryHeader.equals(candidateHeader)) {
+                            temp.addElement(entry);
+                            break;
+                        }
                     }
                 }
             }
@@ -234,19 +236,21 @@ public class VehicleDataBase {
 
             for (int i = 0; i < searchResults.size(); i++) {
                 Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
 
                 for (int j = 0; j < driverResults.size(); j++) {
                     Object candidate = driverResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
 
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
+                    if (entry instanceof CustomArrayList && candidate instanceof CustomArrayList) {
+                        CustomArrayList<?> entryList = (CustomArrayList<?>) entry;
+                        CustomArrayList<?> candidateList = (CustomArrayList<?>) candidate;
+
+                        String entryHeader = entryList.getElement(0).toString().trim();
+                        String candidateHeader = candidateList.getElement(0).toString().trim();
+
+                        if (entryHeader.equals(candidateHeader)) {
+                            temp.addElement(entry);
+                            break;
+                        }
                     }
                 }
             }
@@ -255,108 +259,20 @@ public class VehicleDataBase {
 
         if (searchResults.size() == 1) {
             Object entryObj = searchResults.getElement(0);
+
             if (entryObj instanceof CustomArrayList) {
                 CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                String header = entry.getElement(0).toString();
+                String header = entry.getElement(0).toString(); // "Entry 001"
                 String entryNumber = header.replace("Entry ", "").trim();
-                updateJson(entryNumber);
+                updateJson(entryNumber); // Pass just "001"
             } else {
                 System.out.println("Unexpected result format.");
             }
+
         } else if (searchResults.size() == 0) {
             System.out.println("No matching vehicle found.");
         } else {
-            System.out.println("Multiple entries still match. Refining search...");
-
-            // Step 1: maintenanceHistory
-            CustomArrayList<Object> maintenanceResults = searchVehicleString("maintenanceHistory");
-            CustomArrayList<Object> temp = new CustomArrayList<>();
-            for (int i = 0; i < searchResults.size(); i++) {
-                Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                for (int j = 0; j < maintenanceResults.size(); j++) {
-                    Object candidate = maintenanceResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
-                    }
-                }
-            }
-            searchResults = temp;
-
-            // Step 2: mileage
-            if (searchResults.size() > 1) {
-                CustomArrayList<Object> mileageResults = searchVehicleDoubleRange("mileage");
-                temp = new CustomArrayList<>();
-                for (int i = 0; i < searchResults.size(); i++) {
-                    Object entry = searchResults.getElement(i);
-                    if (!(entry instanceof CustomArrayList))
-                        continue;
-                    String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                    for (int j = 0; j < mileageResults.size(); j++) {
-                        Object candidate = mileageResults.getElement(j);
-                        if (!(candidate instanceof CustomArrayList))
-                            continue;
-                        String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                        if (entryHeader.equals(candidateHeader)) {
-                            temp.addElement(entry);
-                            break;
-                        }
-                    }
-                }
-                searchResults = temp;
-            }
-
-            // Step 3: fuelUsage
-            if (searchResults.size() > 1) {
-                CustomArrayList<Object> fuelResults = searchVehicleDoubleRange("fuelUsage");
-                temp = new CustomArrayList<>();
-                for (int i = 0; i < searchResults.size(); i++) {
-                    Object entry = searchResults.getElement(i);
-                    if (!(entry instanceof CustomArrayList))
-                        continue;
-                    String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                    for (int j = 0; j < fuelResults.size(); j++) {
-                        Object candidate = fuelResults.getElement(j);
-                        if (!(candidate instanceof CustomArrayList))
-                            continue;
-                        String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                        if (entryHeader.equals(candidateHeader)) {
-                            temp.addElement(entry);
-                            break;
-                        }
-                    }
-                }
-                searchResults = temp;
-            }
-
-            // Final check
-            if (searchResults.size() == 1) {
-                Object entryObj = searchResults.getElement(0);
-                if (entryObj instanceof CustomArrayList) {
-                    CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                    String header = entry.getElement(0).toString();
-                    String entryNumber = header.replace("Entry ", "").trim();
-                    updateJson(entryNumber);
-                } else {
-                    System.out.println("Unexpected result format.");
-                }
-            } else if (searchResults.size() == 0) {
-                System.out.println("No matching vehicle found after refinement.");
-            } else {
-                System.out.println("Still multiple entries. Manual review may be required.");
-            }
+            System.out.println("Multiple entries still match. Please refine your search.");
         }
     }
 
@@ -462,6 +378,7 @@ public class VehicleDataBase {
         }
     }
 
+    // Logic to search for a vehicle by string
     public CustomArrayList<Object> searchVehicleString(String searchString) {
         System.out.println("Enter :" + searchString);
         validityString(scanner); // Assume this validates input
@@ -502,35 +419,15 @@ public class VehicleDataBase {
                         // Detect end of entry block
                         if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
                             String matchedFieldValue = null;
-                            boolean isDeleted = false;
 
                             for (int i = 0; i < entryLines.size(); i++) {
                                 String e = entryLines.getElement(i).trim();
 
+                                // Extract field name
                                 int q1 = e.indexOf("\"");
                                 int q2 = e.indexOf("\"", q1 + 1);
                                 if (q1 != -1 && q2 != -1) {
                                     String fieldName = e.substring(q1 + 1, q2);
-
-                                    // Check status
-                                    if (fieldName.equals("status")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawStatus = e.substring(colonIndex + 1).trim();
-                                            if (rawStatus.endsWith(",")) {
-                                                rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                                rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                                isDeleted = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    // Check target field
                                     if (fieldName.equals(searchString)) {
                                         int colonIndex = e.indexOf(":");
                                         if (colonIndex != -1) {
@@ -542,13 +439,14 @@ public class VehicleDataBase {
                                                 rawValue = rawValue.substring(1, rawValue.length() - 1);
                                             }
                                             matchedFieldValue = rawValue;
+                                            break;
                                         }
                                     }
                                 }
                             }
 
-                            if (!isDeleted && matchedFieldValue != null &&
-                                    matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
+                            if (matchedFieldValue != null
+                                    && matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
                                 CustomArrayList<String> oneEntry = new CustomArrayList<>();
                                 oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
                                 for (int i = 0; i < entryLines.size(); i++) {
@@ -567,7 +465,6 @@ public class VehicleDataBase {
                 System.out.println("Error reading JSON database: " + e.getMessage());
             }
         }
-
         for (int index = 0; index < results.size(); index++) {
             Object entryObj = results.getElement(index);
 
@@ -639,52 +536,27 @@ public class VehicleDataBase {
 
                         if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
                             String matchedType = null;
-                            boolean isDeleted = false;
 
                             for (int i = 0; i < entryLines.size(); i++) {
                                 String e = entryLines.getElement(i).trim();
-
-                                int q1 = e.indexOf("\"");
-                                int q2 = e.indexOf("\"", q1 + 1);
-                                if (q1 != -1 && q2 != -1) {
-                                    String fieldName = e.substring(q1 + 1, q2);
-
-                                    if (fieldName.equals("status")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawStatus = e.substring(colonIndex + 1).trim();
-                                            if (rawStatus.endsWith(",")) {
-                                                rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                                rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                                isDeleted = true;
-                                                break;
-                                            }
+                                if (e.startsWith("\"vehicleType\"")) {
+                                    int colonIndex = e.indexOf(":");
+                                    if (colonIndex != -1) {
+                                        String rawValue = e.substring(colonIndex + 1).trim();
+                                        if (rawValue.endsWith(",")) {
+                                            rawValue = rawValue.substring(0, rawValue.length() - 1);
                                         }
-                                    }
-
-                                    if (fieldName.equals("vehicleType")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawValue = e.substring(colonIndex + 1).trim();
-                                            if (rawValue.endsWith(",")) {
-                                                rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                            }
-                                            if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                                rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                            }
-                                            matchedType = rawValue;
+                                        if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
+                                            rawValue = rawValue.substring(1, rawValue.length() - 1);
                                         }
+                                        matchedType = rawValue;
+                                        break;
                                     }
                                 }
                             }
 
-                            boolean match = !isDeleted && ((targetType == null) ||
-                                    (matchedType != null && matchedType.equalsIgnoreCase(targetType)));
-
+                            boolean match = (targetType == null)
+                                    || (matchedType != null && matchedType.equalsIgnoreCase(targetType));
                             if (match) {
                                 CustomArrayList<String> oneEntry = new CustomArrayList<>();
                                 oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
@@ -726,13 +598,12 @@ public class VehicleDataBase {
                 "Searching for vehicles with " + searchString + " between " + lowerBound + " and " + upperBound);
 
         jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-        CustomArrayList<Object> results = new CustomArrayList<>();
-
         try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
             String line;
             boolean insideEntry = false;
             String currentEntryNumber = null;
             CustomArrayList<String> entryLines = new CustomArrayList<>();
+            results = new CustomArrayList<>();
 
             while ((line = reader.readLine()) != null) {
                 String trimmedLine = line.trim();
@@ -753,60 +624,29 @@ public class VehicleDataBase {
 
                     if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
                         String matchedFieldValue = null;
-                        boolean isDeleted = false;
 
                         for (int i = 0; i < entryLines.size(); i++) {
-                            String e = entryLines.getElement(i).trim();
+                            String e = entryLines.getElement(i);
 
-                            int q1 = e.indexOf("\"");
-                            int q2 = e.indexOf("\"", q1 + 1);
-                            if (q1 != -1 && q2 != -1) {
-                                String fieldName = e.substring(q1 + 1, q2);
-
-                                if (fieldName.equals("status")) {
-                                    int colonIndex = e.indexOf(":");
-                                    if (colonIndex != -1) {
-                                        String rawStatus = e.substring(colonIndex + 1).trim();
-                                        if (rawStatus.endsWith(",")) {
-                                            rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                        }
-                                        if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                            rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                        }
-                                        if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                            isDeleted = true;
-                                            break;
-                                        }
+                            // Check if line contains the search field
+                            if (e.startsWith("\"" + searchString + "\"")) {
+                                int colonIndex = e.indexOf(":");
+                                if (colonIndex != -1) {
+                                    String rawValue = e.substring(colonIndex + 1).trim();
+                                    if (rawValue.endsWith(",")) {
+                                        rawValue = rawValue.substring(0, rawValue.length() - 1);
                                     }
-                                }
-
-                                if (fieldName.equals(searchString)) {
-                                    int colonIndex = e.indexOf(":");
-                                    if (colonIndex != -1) {
-                                        String rawValue = e.substring(colonIndex + 1).trim();
-                                        if (rawValue.endsWith(",")) {
-                                            rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                        }
-                                        if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                            rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                        }
-                                        matchedFieldValue = rawValue;
+                                    if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
+                                        rawValue = rawValue.substring(1, rawValue.length() - 1);
                                     }
+                                    matchedFieldValue = rawValue;
+                                    break;
                                 }
                             }
                         }
-
-                        if (!isDeleted && matchedFieldValue != null) {
-                            try {
-                                double value = Double.parseDouble(matchedFieldValue);
-                                if (value >= lowerBound && value <= upperBound) {
-                                    results.addElement(
-                                            "Found \"" + searchString + "\": " + matchedFieldValue + " in Entry "
-                                                    + currentEntryNumber);
-                                }
-                            } catch (NumberFormatException ex) {
-                                // Skip non-numeric values
-                            }
+                        if (matchedFieldValue != null) {
+                            results.addElement("Found \"" + searchString + "\": " + matchedFieldValue + " in Entry "
+                                    + currentEntryNumber);
                         }
 
                         insideEntry = false;
@@ -818,7 +658,6 @@ public class VehicleDataBase {
         } catch (IOException e) {
             System.out.println("Error reading JSON database: " + e.getMessage());
         }
-
         return results;
     }
 

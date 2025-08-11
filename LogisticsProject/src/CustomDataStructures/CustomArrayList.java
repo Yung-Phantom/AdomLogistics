@@ -63,7 +63,6 @@ public class CustomArrayList<T> {
         ArrayInput = newDataSpace; // Update the reference to the new array
     }
 
-    @SuppressWarnings("unchecked")
     public void clear() {
         ArrayInput = (T[]) new Object[1]; // Reset the array to a new array of size 1
         size = 0; // Reset the size to 0
