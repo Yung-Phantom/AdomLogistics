@@ -586,147 +586,34 @@ public class VehicleDataBase {
 
     // Logic to search for a vehicle by type
     public CustomArrayList<Object> searchVehicleType() {
-        searchByType.printMenu();
-        validity(scanner, searchByType.size());
-        boolean choice = trueFalse;
-        int choiceInput = userInput;
+    searchByType.printMenu();
+    validity(scanner, searchByType.size()); // Assume this validates input
+    boolean choice = trueFalse;
+    int choiceInput = userInput;
 
-        CustomArrayList<Object> results = new CustomArrayList<>();
+    CustomArrayList<Object> results = new CustomArrayList<>();
 
-        if (choice) {
-            String targetType = null;
+    if (choice) {
+        String targetType = null;
 
-            switch (choiceInput) {
-                case 0:
-                    System.out.println("Searching for all vehicle types...");
-                    break;
-                case 1:
-                    System.out.println("Searching for trucks...");
-                    targetType = "truck";
-                    break;
-                case 2:
-                    System.out.println("Searching for vans...");
-                    targetType = "van";
-                    break;
-                case 3:
-                    System.out.println("Exiting Adom Logistics System. Goodbye!");
-                    return results;
-            }
-
-            jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-
-            try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-                String line;
-                boolean insideEntry = false;
-                String currentEntryNumber = null;
-                CustomArrayList<String> entryLines = new CustomArrayList<>();
-
-                while ((line = reader.readLine()) != null) {
-                    String trimmedLine = line.trim();
-
-                    if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
-                        int start = trimmedLine.indexOf("Entry") + 6;
-                        int end = trimmedLine.indexOf("\"", start);
-                        currentEntryNumber = trimmedLine.substring(start, end);
-                        insideEntry = true;
-                        entryLines.clear();
-                        entryLines.addElement(trimmedLine);
-                        continue;
-                    }
-
-                    if (insideEntry) {
-                        entryLines.addElement(trimmedLine);
-
-                        if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
-                            String matchedType = null;
-                            boolean isDeleted = false;
-
-                            for (int i = 0; i < entryLines.size(); i++) {
-                                String e = entryLines.getElement(i).trim();
-
-                                int q1 = e.indexOf("\"");
-                                int q2 = e.indexOf("\"", q1 + 1);
-                                if (q1 != -1 && q2 != -1) {
-                                    String fieldName = e.substring(q1 + 1, q2);
-
-                                    if (fieldName.equals("status")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawStatus = e.substring(colonIndex + 1).trim();
-                                            if (rawStatus.endsWith(",")) {
-                                                rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                                rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                                isDeleted = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    if (fieldName.equals("vehicleType")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawValue = e.substring(colonIndex + 1).trim();
-                                            if (rawValue.endsWith(",")) {
-                                                rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                            }
-                                            if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                                rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                            }
-                                            matchedType = rawValue;
-                                        }
-                                    }
-                                }
-                            }
-
-                            boolean match = !isDeleted && ((targetType == null) ||
-                                    (matchedType != null && matchedType.equalsIgnoreCase(targetType)));
-
-                            if (match) {
-                                CustomArrayList<String> oneEntry = new CustomArrayList<>();
-                                oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
-                                for (int i = 0; i < entryLines.size(); i++) {
-                                    oneEntry.addElement(entryLines.getElement(i));
-                                }
-                                results.addElement(oneEntry);
-                            }
-
-                            insideEntry = false;
-                            currentEntryNumber = null;
-                            entryLines.clear();
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                System.out.println("Error reading JSON database: " + e.getMessage());
-            }
+        switch (choiceInput) {
+            case 0:
+                System.out.println("Searching for all vehicle types...");
+                break;
+            case 1:
+                System.out.println("Searching for trucks...");
+                targetType = "truck";
+                break;
+            case 2:
+                System.out.println("Searching for vans...");
+                targetType = "van";
+                break;
+            case 3:
+                System.out.println("Exiting Adom Logistics System. Goodbye!");
+                return results;
         }
-
-        return results;
-    }
-
-    public CustomArrayList<Object> searchVehicleDoubleRange(String searchString) {
-        System.out.println("First input");
-        validityDouble(scanner); // Assume this validates input
-        double lowerBound = userDoubleInput; // First input
-        System.out.println("Second input");
-        validityDouble(scanner); // Assume this validates input
-        double upperBound = userDoubleInput; // Second input
-
-        if (lowerBound > upperBound) {
-            double temp = lowerBound;
-            lowerBound = upperBound;
-            upperBound = temp;
-        }
-
-        System.out.println(
-                "Searching for vehicles with " + searchString + " between " + lowerBound + " and " + upperBound);
 
         jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-        CustomArrayList<Object> results = new CustomArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
             String line;
@@ -737,11 +624,11 @@ public class VehicleDataBase {
             while ((line = reader.readLine()) != null) {
                 String trimmedLine = line.trim();
 
+                // Detect entry start
                 if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
                     int start = trimmedLine.indexOf("Entry") + 6;
                     int end = trimmedLine.indexOf("\"", start);
                     currentEntryNumber = trimmedLine.substring(start, end);
-
                     insideEntry = true;
                     entryLines.clear();
                     entryLines.addElement(trimmedLine);
@@ -751,8 +638,9 @@ public class VehicleDataBase {
                 if (insideEntry) {
                     entryLines.addElement(trimmedLine);
 
+                    // Detect end of entry block
                     if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
-                        String matchedFieldValue = null;
+                        String matchedType = null;
                         boolean isDeleted = false;
 
                         for (int i = 0; i < entryLines.size(); i++) {
@@ -763,6 +651,7 @@ public class VehicleDataBase {
                             if (q1 != -1 && q2 != -1) {
                                 String fieldName = e.substring(q1 + 1, q2);
 
+                                // Check status
                                 if (fieldName.equals("status")) {
                                     int colonIndex = e.indexOf(":");
                                     if (colonIndex != -1) {
@@ -780,7 +669,8 @@ public class VehicleDataBase {
                                     }
                                 }
 
-                                if (fieldName.equals(searchString)) {
+                                // Check vehicleType
+                                if (fieldName.equals("vehicleType")) {
                                     int colonIndex = e.indexOf(":");
                                     if (colonIndex != -1) {
                                         String rawValue = e.substring(colonIndex + 1).trim();
@@ -790,23 +680,22 @@ public class VehicleDataBase {
                                         if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
                                             rawValue = rawValue.substring(1, rawValue.length() - 1);
                                         }
-                                        matchedFieldValue = rawValue;
+                                        matchedType = rawValue;
                                     }
                                 }
                             }
                         }
 
-                        if (!isDeleted && matchedFieldValue != null) {
-                            try {
-                                double value = Double.parseDouble(matchedFieldValue);
-                                if (value >= lowerBound && value <= upperBound) {
-                                    results.addElement(
-                                            "Found \"" + searchString + "\": " + matchedFieldValue + " in Entry "
-                                                    + currentEntryNumber);
-                                }
-                            } catch (NumberFormatException ex) {
-                                // Skip non-numeric values
+                        boolean match = !isDeleted && (targetType == null ||
+                                (matchedType != null && matchedType.equalsIgnoreCase(targetType)));
+
+                        if (match) {
+                            CustomArrayList<String> oneEntry = new CustomArrayList<>();
+                            oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
+                            for (int i = 0; i < entryLines.size(); i++) {
+                                oneEntry.addElement(entryLines.getElement(i));
                             }
+                            results.addElement(oneEntry);
                         }
 
                         insideEntry = false;
@@ -818,9 +707,156 @@ public class VehicleDataBase {
         } catch (IOException e) {
             System.out.println("Error reading JSON database: " + e.getMessage());
         }
-
-        return results;
     }
+
+    for (int index = 0; index < results.size(); index++) {
+        Object entryObj = results.getElement(index);
+
+        if (entryObj instanceof CustomArrayList) {
+            CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
+            String header = entry.getElement(0).toString(); // "Entry 001"
+            String entryNumber = header.replace("Entry ", "").trim();
+            System.out.println("Entry number found: " + entryNumber);
+        } else {
+            System.out.println(entryObj); // fallback
+        }
+    }
+
+    return results;
+}
+
+    public CustomArrayList<Object> searchVehicleDoubleRange(String searchString) {
+    System.out.println("First input");
+    validityDouble(scanner); // Assume this validates input
+    double lowerBound = userDoubleInput;
+
+    System.out.println("Second input");
+    validityDouble(scanner); // Assume this validates input
+    double upperBound = userDoubleInput;
+
+    if (lowerBound > upperBound) {
+        double temp = lowerBound;
+        lowerBound = upperBound;
+        upperBound = temp;
+    }
+
+    System.out.println("Searching for vehicles with " + searchString + " between " + lowerBound + " and " + upperBound);
+
+    jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
+    CustomArrayList<Object> results = new CustomArrayList<>();
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
+        String line;
+        boolean insideEntry = false;
+        String currentEntryNumber = null;
+        CustomArrayList<String> entryLines = new CustomArrayList<>();
+
+        while ((line = reader.readLine()) != null) {
+            String trimmedLine = line.trim();
+
+            // Detect entry start
+            if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
+                int start = trimmedLine.indexOf("Entry") + 6;
+                int end = trimmedLine.indexOf("\"", start);
+                currentEntryNumber = trimmedLine.substring(start, end);
+                insideEntry = true;
+                entryLines.clear();
+                entryLines.addElement(trimmedLine);
+                continue;
+            }
+
+            if (insideEntry) {
+                entryLines.addElement(trimmedLine);
+
+                // Detect end of entry block
+                if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
+                    String matchedFieldValue = null;
+                    boolean isDeleted = false;
+
+                    for (int i = 0; i < entryLines.size(); i++) {
+                        String e = entryLines.getElement(i).trim();
+
+                        int q1 = e.indexOf("\"");
+                        int q2 = e.indexOf("\"", q1 + 1);
+                        if (q1 != -1 && q2 != -1) {
+                            String fieldName = e.substring(q1 + 1, q2);
+
+                            // Check status
+                            if (fieldName.equals("status")) {
+                                int colonIndex = e.indexOf(":");
+                                if (colonIndex != -1) {
+                                    String rawStatus = e.substring(colonIndex + 1).trim();
+                                    if (rawStatus.endsWith(",")) {
+                                        rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
+                                    }
+                                    if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
+                                        rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
+                                    }
+                                    if (rawStatus.equalsIgnoreCase("Deleted")) {
+                                        isDeleted = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Check target field
+                            if (fieldName.equals(searchString)) {
+                                int colonIndex = e.indexOf(":");
+                                if (colonIndex != -1) {
+                                    String rawValue = e.substring(colonIndex + 1).trim();
+                                    if (rawValue.endsWith(",")) {
+                                        rawValue = rawValue.substring(0, rawValue.length() - 1);
+                                    }
+                                    if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
+                                        rawValue = rawValue.substring(1, rawValue.length() - 1);
+                                    }
+                                    matchedFieldValue = rawValue;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isDeleted && matchedFieldValue != null) {
+                        try {
+                            double value = Double.parseDouble(matchedFieldValue);
+                            if (value >= lowerBound && value <= upperBound) {
+                                CustomArrayList<String> oneEntry = new CustomArrayList<>();
+                                oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
+                                for (int i = 0; i < entryLines.size(); i++) {
+                                    oneEntry.addElement(entryLines.getElement(i));
+                                }
+                                results.addElement(oneEntry);
+                            }
+                        } catch (NumberFormatException ex) {
+                            // Skip non-numeric values
+                        }
+                    }
+
+                    insideEntry = false;
+                    currentEntryNumber = null;
+                    entryLines.clear();
+                }
+            }
+        }
+    } catch (IOException e) {
+        System.out.println("Error reading JSON database: " + e.getMessage());
+    }
+
+    for (int index = 0; index < results.size(); index++) {
+        Object entryObj = results.getElement(index);
+
+        if (entryObj instanceof CustomArrayList) {
+            CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
+            String header = entry.getElement(0).toString(); // "Entry 001"
+            String entryNumber = header.replace("Entry ", "").trim();
+            System.out.println("Entry number found: " + entryNumber);
+        } else {
+            System.out.println(entryObj); // fallback
+        }
+    }
+
+    return results;
+}
 
     public void selectMenuItem() {
         // call the validity method to get the boolean and int that will be used for the
