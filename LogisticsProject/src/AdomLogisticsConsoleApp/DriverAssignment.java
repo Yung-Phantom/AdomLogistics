@@ -1,3 +1,4 @@
+// Main driver assignment and management logic for Adom Logistics
 package AdomLogisticsConsoleApp;
 
 import java.io.BufferedReader;
@@ -11,6 +12,11 @@ import CustomDataStructures.CustomArrayList;
 // import java.util.List;
 import java.util.Scanner;
 
+
+/**
+ * Main class for driver assignment, management, and activity tracking.
+ * Handles adding, removing, updating, assigning, and viewing drivers.
+ */
 public class DriverAssignment {
 
     BannerElements bElements;
@@ -33,6 +39,9 @@ public class DriverAssignment {
     File driverStorage;
     File finalStorageDir;
 
+    /**
+     * Constructor: Initializes banners and menu options.
+     */
     public DriverAssignment(int width) {
         bElements = new BannerElements(width, "Adom Logistics Driver Management");
         bElements.printBanner();
@@ -59,6 +68,9 @@ public class DriverAssignment {
         updateDriver.addToMenu("Please enter any infraction notes.(leave blank if none):");
     }
 
+    /**
+     * Main menu selection logic. Handles user input for menu navigation.
+     */
     public void selectMenuItem() {
         // call the validity method to get the boolean and int that will be used for the
         validity(scanner, bElements.size());
@@ -84,7 +96,7 @@ public class DriverAssignment {
                     assignDriverMenu();
                     break;
                 case 5:
-                    updateDriverActivity();
+                    viewDriverActivity();
                     break;
                 case 6:
                     System.out.println("Exiting Adom Logistics System. Goodbye!");
@@ -95,6 +107,108 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * View a driver's activity, including all routes, assignment status, delays, and infractions.
+     */
+    private void viewDriverActivity() {
+        System.out.println("\n=== View Driver Activity ===");
+        System.out.print("Enter Driver ID: ");
+        String driverID = scanner.nextLine().trim();
+
+        // Check if driver exists in driverDetails.txt and get details
+        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        if (!detailsFile.exists()) {
+            System.out.println("No driver details found.");
+            return;
+        }
+        String driverName = null;
+        String assignmentStatus = null;
+        String currentAssignment = null;
+        boolean found = false;
+        try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
+            String line;
+            boolean insideBlock = false;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("Driver ID: ")) {
+                    insideBlock = line.equals("Driver ID: " + driverID);
+                    continue;
+                }
+                if (insideBlock) {
+                    if (line.startsWith("Driver Name: ")) {
+                        driverName = line.substring("Driver Name: ".length()).trim();
+                    }
+                    if (line.startsWith("Assigned: ")) {
+                        assignmentStatus = line.substring("Assigned: ".length()).trim();
+                    }
+                    if (line.startsWith("Assigned Routes: ")) {
+                        String val = line.substring("Assigned Routes: ".length()).trim();
+                        if (!val.isEmpty())
+                            currentAssignment = val;
+                    }
+                    if (line.startsWith("Entry")) {
+                        insideBlock = false;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
+            return;
+        }
+        if (driverName == null) {
+            System.out.println("Driver ID not found.");
+            return;
+        }
+
+        // Now check drivers.txt for routes, delays, infractions
+        File driverStorage = new File("LogisticsProject/src/finalDatabase/drivers.txt").getAbsoluteFile();
+        String allRoutes = null;
+        int delayCount = 0;
+        String allInfractions = null;
+        if (driverStorage.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(driverStorage))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith(driverID + "|")) {
+                        String[] parts = line.split("\\|", -1);
+                        if (parts.length > 2)
+                            allRoutes = parts[2];
+                        if (parts.length > 3) {
+                            try {
+                                delayCount = Integer.parseInt(parts[3]);
+                            } catch (Exception e) {
+                                delayCount = 0;
+                            }
+                        }
+                        if (parts.length > 5 && !parts[5].isEmpty())
+                            allInfractions = parts[5];
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                /* ignore */ }
+        }
+
+        // Output
+        System.out.println("\nDriver Name: " + driverName);
+        if (allRoutes != null && !allRoutes.isEmpty()) {
+            System.out.println("All Routes: " + allRoutes);
+        } else {
+            System.out.println("No routes assigned yet.");
+        }
+        System.out.println("Assignment Status: " + (assignmentStatus != null ? assignmentStatus : "Unknown"));
+        if (currentAssignment != null && !currentAssignment.isEmpty()) {
+            System.out.println("Current Assignment: " + currentAssignment);
+        }
+        System.out.println("Number of Delays: " + delayCount);
+        if (allInfractions != null && !allInfractions.isEmpty()) {
+            System.out.println("Infractions: " + allInfractions);
+        }
+    }
+
+    /**
+     * Assigns a driver to a route based on proximity or experience/fairness.
+     * Maintains two queues and updates persistent storage.
+     */
     private void assignDriverMenu() {
         // New logic: maintain two queues (proximity and experience)
         File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
@@ -104,7 +218,8 @@ public class DriverAssignment {
             return;
         }
 
-        class DriverQ {
+    // Helper class for queueing drivers for assignment
+    class DriverQ {
             String id;
             double proximity;
             int experienceScore;
@@ -113,7 +228,9 @@ public class DriverAssignment {
             int delays;
             int infractions;
             int routes;
-            DriverQ(String id, double proximity, int experienceScore, int lineIdx, String name, int delays, int infractions, int routes) {
+
+            DriverQ(String id, double proximity, int experienceScore, int lineIdx, String name, int delays,
+                    int infractions, int routes) {
                 this.id = id;
                 this.proximity = proximity;
                 this.experienceScore = experienceScore;
@@ -141,7 +258,13 @@ public class DriverAssignment {
                 allLines.addElement(line);
                 if (line.startsWith("Entry")) {
                     entryStart = idx;
-                    id = null; name = null; proximity = Double.MAX_VALUE; delays = 0; infractions = 0; routes = 0; assigned = false;
+                    id = null;
+                    name = null;
+                    proximity = Double.MAX_VALUE;
+                    delays = 0;
+                    infractions = 0;
+                    routes = 0;
+                    assigned = false;
                 }
                 if (line.startsWith("Driver ID: ")) {
                     id = line.substring("Driver ID: ".length()).trim();
@@ -183,7 +306,8 @@ public class DriverAssignment {
                 }
                 if (line.startsWith("--------------------------------------------------")) {
                     if (id != null && proximity != Double.MAX_VALUE && !assigned) {
-                        DriverQ dq = new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays, infractions, routes);
+                        DriverQ dq = new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays,
+                                infractions, routes);
                         proximityQueue.addElement(dq);
                         experienceQueue.addElement(dq);
                     }
@@ -222,7 +346,8 @@ public class DriverAssignment {
         } else {
             // Experience: fairness logic
             // 1. On first run, assign all drivers until each has at least one route
-            // 2. On subsequent runs, queue perfect drivers first, then by fewest delays, then by fewest infractions, then by formula
+            // 2. On subsequent runs, queue perfect drivers first, then by fewest delays,
+            // then by fewest infractions, then by formula
             // Build lists for each group
             CustomArrayList<DriverQ> noRoute = new CustomArrayList<>();
             CustomArrayList<DriverQ> perfect = new CustomArrayList<>();
@@ -238,8 +363,10 @@ public class DriverAssignment {
                 } else if (dq.delays == 0 && dq.infractions == 0) {
                     perfect.addElement(dq);
                 } else {
-                    if (dq.delays < minDelays) minDelays = dq.delays;
-                    if (dq.infractions < minInfractions) minInfractions = dq.infractions;
+                    if (dq.delays < minDelays)
+                        minDelays = dq.delays;
+                    if (dq.infractions < minInfractions)
+                        minInfractions = dq.infractions;
                 }
             }
             // Add drivers with fewest delays
@@ -259,25 +386,33 @@ public class DriverAssignment {
             // Add the rest
             for (int i = 0; i < experienceQueue.size(); i++) {
                 DriverQ dq = experienceQueue.getElement(i);
-                if (dq.routes > 0 && dq.delays != minDelays && dq.infractions != minInfractions && !(dq.delays == 0 && dq.infractions == 0)) {
+                if (dq.routes > 0 && dq.delays != minDelays && dq.infractions != minInfractions
+                        && !(dq.delays == 0 && dq.infractions == 0)) {
                     rest.addElement(dq);
                 }
             }
-            // Priority: noRoute > perfect > fewestDelays > fewestInfractions > rest (by formula)
+            // Priority: noRoute > perfect > fewestDelays > fewestInfractions > rest (by
+            // formula)
             CustomArrayList<DriverQ> fairQueue = new CustomArrayList<>();
-            for (int i = 0; i < noRoute.size(); i++) fairQueue.addElement(noRoute.getElement(i));
-            for (int i = 0; i < perfect.size(); i++) fairQueue.addElement(perfect.getElement(i));
-            for (int i = 0; i < fewestDelays.size(); i++) fairQueue.addElement(fewestDelays.getElement(i));
-            for (int i = 0; i < fewestInfractions.size(); i++) fairQueue.addElement(fewestInfractions.getElement(i));
-            for (int i = 0; i < rest.size(); i++) fairQueue.addElement(rest.getElement(i));
-            // Now pick the best from fairQueue using formula: score = 10000/(1+infractions+delays) + routes
+            for (int i = 0; i < noRoute.size(); i++)
+                fairQueue.addElement(noRoute.getElement(i));
+            for (int i = 0; i < perfect.size(); i++)
+                fairQueue.addElement(perfect.getElement(i));
+            for (int i = 0; i < fewestDelays.size(); i++)
+                fairQueue.addElement(fewestDelays.getElement(i));
+            for (int i = 0; i < fewestInfractions.size(); i++)
+                fairQueue.addElement(fewestInfractions.getElement(i));
+            for (int i = 0; i < rest.size(); i++)
+                fairQueue.addElement(rest.getElement(i));
+            // Now pick the best from fairQueue using formula: score =
+            // 10000/(1+infractions+delays) + routes
             for (int i = 0; i < fairQueue.size(); i++) {
                 DriverQ dq = fairQueue.getElement(i);
                 if (chosen == null) {
                     chosen = dq;
                 } else {
-                    int chosenScore = (int)(10000.0/(1+chosen.infractions+chosen.delays) + chosen.routes);
-                    int dqScore = (int)(10000.0/(1+dq.infractions+dq.delays) + dq.routes);
+                    int chosenScore = (int) (10000.0 / (1 + chosen.infractions + chosen.delays) + chosen.routes);
+                    int dqScore = (int) (10000.0 / (1 + dq.infractions + dq.delays) + dq.routes);
                     if (dqScore > chosenScore) {
                         chosen = dq;
                     }
@@ -296,8 +431,11 @@ public class DriverAssignment {
         // ...existing code for updating driverDetails.txt and drivers.txt...
         int entryStart = chosen.lineIdx;
         int entryEnd = chosen.lineIdx;
-        while (entryStart > 0 && !allLines.getElement(entryStart).startsWith("Entry")) entryStart--;
-        while (entryEnd < allLines.size() && !allLines.getElement(entryEnd).startsWith("--------------------------------------------------")) entryEnd++;
+        while (entryStart > 0 && !allLines.getElement(entryStart).startsWith("Entry"))
+            entryStart--;
+        while (entryEnd < allLines.size()
+                && !allLines.getElement(entryEnd).startsWith("--------------------------------------------------"))
+            entryEnd++;
         for (int i = entryStart; i < entryEnd; i++) {
             String l = allLines.getElement(i);
             if (l.startsWith("Assigned: ")) {
@@ -329,7 +467,10 @@ public class DriverAssignment {
                         String[] parts = line.split("\\|", -1);
                         String routes = parts.length > 2 ? parts[2] : "";
                         if (!routes.contains(newRoute)) {
-                            if (!routes.isEmpty()) routes += "," + newRoute; else routes = newRoute;
+                            if (!routes.isEmpty())
+                                routes += "," + newRoute;
+                            else
+                                routes = newRoute;
                         }
                         String updated = chosen.id + "|" + chosen.name + "|" + routes;
                         for (int i = 3; i < parts.length; i++) {
@@ -341,7 +482,8 @@ public class DriverAssignment {
                         driverLines.addElement(line);
                     }
                 }
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) {
+                /* ignore */ }
         }
         if (!found) {
             String newLine = chosen.id + "|" + chosen.name + "|" + newRoute;
@@ -366,12 +508,15 @@ public class DriverAssignment {
             }
         }
         // Return immediately after assignment to prevent double prompt
-    return;
+        return;
     }
 
     // Helper: check if driverID exists in driverDetails.txt (supports a few common
     // formats)
 
+    /**
+     * Checks if a driver ID exists in driverDetails.txt (supports several formats).
+     */
     private boolean driverExistsInDetails(String driverID) {
         File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
         if (!detailsFile.exists())
@@ -407,6 +552,10 @@ public class DriverAssignment {
         return false;
     }
 
+    /**
+     * Updates a driver's activity (route, delay, infraction) and accumulates history.
+     * Also resets assignment status after update.
+     */
     private void updateDriverActivity() {
         updateDriverDetails = new CustomArrayList<>();
         addNewEntry = new CustomArrayList<>();
@@ -452,7 +601,8 @@ public class DriverAssignment {
                 System.out.println("Error reading driverDetails.txt: " + e.getMessage());
             }
         }
-        if (routeID == null) routeID = "";
+        if (routeID == null)
+            routeID = "";
         updateDriverDetails.addElement(routeID);
 
         // Prompt 2: Delay? (yes/no only)
@@ -480,7 +630,8 @@ public class DriverAssignment {
 
         driverStorage = new File("LogisticsProject/src/finalDatabase/drivers.txt").getAbsoluteFile();
 
-        // Compose full line for drivers.txt: id|name|route|timestamp|delayCount|infractionCount|infractions
+        // Compose full line for drivers.txt:
+        // id|name|route|timestamp|delayCount|infractionCount|infractions
         String driverName = "Unknown";
         if (detailsFile.exists()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
@@ -500,13 +651,15 @@ public class DriverAssignment {
                         }
                     }
                 }
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) {
+                /* ignore */ }
         }
         int delayCount = delayed ? 1 : 0;
         int infractionCount = infraction.isEmpty() ? 0 : 1;
         String infractions = infraction.isEmpty() ? "" : infraction;
         long timestamp = System.currentTimeMillis();
-        String logLine = driverID + "|" + driverName + "|" + routeID + "|" + timestamp + "|" + delayCount + "|" + infractionCount + "|" + infractions;
+        String logLine = driverID + "|" + driverName + "|" + routeID + "|" + timestamp + "|" + delayCount + "|"
+                + infractionCount + "|" + infractions;
         // Only update if Assigned is true
         if (!isDriverAssigned(driverID)) {
             System.out.println("Driver is not assigned. Skipping update.");
@@ -526,15 +679,26 @@ public class DriverAssignment {
                         String[] parts = line.split("\\|", -1);
                         String routes = parts.length > 2 ? parts[2] : "";
                         if (!routes.contains(routeID)) {
-                            if (!routes.isEmpty()) routes += "," + routeID; else routes = routeID;
+                            if (!routes.isEmpty())
+                                routes += "," + routeID;
+                            else
+                                routes = routeID;
                         }
                         String delays = parts.length > 3 ? parts[3] : "0";
                         String infractionsCount = parts.length > 4 ? parts[4] : "0";
                         String infractionDetails = parts.length > 5 ? parts[5] : "";
                         // Sum delay and infraction counts
                         int totalDelay = 0, totalInfraction = 0;
-                        try { totalDelay = Integer.parseInt(delays); } catch (Exception e) { totalDelay = 0; }
-                        try { totalInfraction = Integer.parseInt(infractionsCount); } catch (Exception e) { totalInfraction = 0; }
+                        try {
+                            totalDelay = Integer.parseInt(delays);
+                        } catch (Exception e) {
+                            totalDelay = 0;
+                        }
+                        try {
+                            totalInfraction = Integer.parseInt(infractionsCount);
+                        } catch (Exception e) {
+                            totalInfraction = 0;
+                        }
                         totalDelay += newDelayCount;
                         totalInfraction += newInfractionCount;
                         // Append infraction details
@@ -542,14 +706,16 @@ public class DriverAssignment {
                             infractionDetails += "," + newInfractions;
                         else if (!newInfractions.isEmpty())
                             infractionDetails = newInfractions;
-                        String updated = driverID + "|" + driverName + "|" + routes + "|" + totalDelay + "|" + totalInfraction + "|" + infractionDetails;
+                        String updated = driverID + "|" + driverName + "|" + routes + "|" + totalDelay + "|"
+                                + totalInfraction + "|" + infractionDetails;
                         driverLines.addElement(updated);
                         found = true;
                     } else {
                         driverLines.addElement(line);
                     }
                 }
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) {
+                /* ignore */ }
         }
         if (!found) {
             driverLines.addElement(logLine);
@@ -564,7 +730,8 @@ public class DriverAssignment {
             System.out.println("File access error: " + e.getMessage());
         }
 
-        // After update, set Assigned: false and Assigned Routes: empty in driverDetails.txt
+        // After update, set Assigned: false and Assigned Routes: empty in
+        // driverDetails.txt
         // Update in-place
         if (detailsFile.exists()) {
             CustomArrayList<String> allLines = new CustomArrayList<>();
@@ -592,18 +759,23 @@ public class DriverAssignment {
                     }
                     allLines.addElement(line);
                 }
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) {
+                /* ignore */ }
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(detailsFile))) {
                 for (int i = 0; i < allLines.size(); i++) {
                     String l = allLines.getElement(i);
                     writer.write(l);
                     writer.newLine();
                 }
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) {
+                /* ignore */ }
         }
     }
 
     // Inline-safe integer parser for delay/infraction counts
+    /**
+     * Inline-safe integer parser for delay/infraction counts.
+     */
     @SuppressWarnings("unused")
     private int safeParseInt(String s, int fallback) {
         try {
@@ -613,6 +785,10 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Removes a driver by marking their status as Deleted in driverDetails.txt.
+     * Uses license and phone number for disambiguation.
+     */
     private void removeDriver() {
         CustomArrayList<Object> searchResults = searchDriverString("License Number");
 
@@ -658,6 +834,9 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Marks a driver as deleted in driverDetails.txt by unique entry identifier.
+     */
     public void updateTxt(String uniqueIdentifier) {
         txtStorageDir = new File("LogisticsProject/src/TXTDatabase").getAbsoluteFile();
         if (!txtStorageDir.exists()) {
@@ -723,6 +902,10 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Searches for drivers by a given field (e.g., License Number, Phone Number).
+     * Returns a list of matching entries.
+     */
     public CustomArrayList<Object> searchDriverString(String searchString) {
         System.out.println("Enter: " + searchString);
         validityString(scanner); // Validate input
@@ -808,6 +991,10 @@ public class DriverAssignment {
         return results;
     }
 
+    /**
+     * Adds a new driver, capturing all required fields with validation.
+     * Persists to driverDetails.txt and echoes a summary.
+     */
     private void addNewDriver() {
         addDriverDetails = new CustomArrayList<>();
         addNewEntry = new CustomArrayList<>();
@@ -833,7 +1020,7 @@ public class DriverAssignment {
                 case 1: // Driver's license
                 case 3: // Driver's email address
                 case 4: // Driver address
-                case 5: // Driver maintenance history
+
                     validityString(scanner);
                     addDriverDetails.addElement(userStringInput);
                     break;
@@ -841,18 +1028,9 @@ public class DriverAssignment {
                     validityPhoneString(scanner);
                     addDriverDetails.addElement(userStringInput);
                     break;
-                case 6: // Proximity (should be a number)
-                    double prox = Double.NaN;
-                    while (true) {
-                        String input = scanner.nextLine().trim();
-                        try {
-                            prox = Double.parseDouble(input);
-                            break;
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid input. Please enter a numeric value for proximity.");
-                        }
-                    }
-                    addDriverDetails.addElement(String.valueOf(prox));
+                case 5: // Proximity (must be a double)
+                    validityDouble(scanner);
+                    addDriverDetails.addElement(userDoubleInput);
                     break;
                 default:
                     validityString(scanner);
@@ -888,8 +1066,8 @@ public class DriverAssignment {
                 addNewEntry.addElement("Driver proximity: " + addDriverDetails.getElement(index));
             }
         }
-    // Add assigned status (default: false)
-    addNewEntry.addElement("Assigned: false");
+        // Add assigned status (default: false)
+        addNewEntry.addElement("Assigned: false");
 
         // 3) Persist: saveTXT now receives the ID as the first element
         // Ensure your saveTXT respects this order so search-by-ID works cleanly
@@ -901,6 +1079,9 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Persists a new driver entry to driverDetails.txt.
+     */
     public void saveTXT(CustomArrayList<Object> driverDetails) {
         txtStorageDir = new File("LogisticsProject/src/TXTDatabase").getAbsoluteFile();
         if (!txtStorageDir.exists()) {
@@ -948,6 +1129,9 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Validates phone number input (digits only, 10-16 digits).
+     */
     public void validityPhoneString(Scanner scanner) {
         while (true) {
             System.out.print("Enter phone number (digits only): ");
@@ -962,6 +1146,9 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Validates integer menu input within a given range.
+     */
     public void validity(Scanner scanner, int i) {
         while (true) {
             System.out.print("Please enter your choice (1 - " + i + "): ");
@@ -981,9 +1168,11 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Validates double input (positive only).
+     */
     public void validityDouble(Scanner scanner) {
         while (true) {
-            System.out.print("Enter a positive double: ");
             String s = scanner.nextLine().trim();
             try {
                 double value = Double.parseDouble(s);
@@ -1000,6 +1189,9 @@ public class DriverAssignment {
         }
     }
 
+    /**
+     * Validates non-empty string input.
+     */
     public void validityString(Scanner scanner) {
         while (true) {
             System.out.print("Enter text: ");
@@ -1014,10 +1206,15 @@ public class DriverAssignment {
         }
     }
 
-    // Checks if the driver with the given ID is currently assigned in driverDetails.txt
+    // Checks if the driver with the given ID is currently assigned in
+    // driverDetails.txt
+    /**
+     * Checks if the driver with the given ID is currently assigned in driverDetails.txt.
+     */
     private boolean isDriverAssigned(String driverID) {
         File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
-        if (!detailsFile.exists()) return false;
+        if (!detailsFile.exists())
+            return false;
         try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
             String line;
             boolean insideBlock = false;
@@ -1041,6 +1238,9 @@ public class DriverAssignment {
         return false;
     }
 
+    /**
+     * Main entry point for the Adom Logistics Driver Management system.
+     */
     public static void main(String[] args) {
         // System.out.println("hello world");
         DriverAssignment driverAssignment = new DriverAssignment(50);
