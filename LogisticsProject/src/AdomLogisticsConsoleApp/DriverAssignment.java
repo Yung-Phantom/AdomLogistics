@@ -254,6 +254,7 @@ public class DriverAssignment {
             double proximity = Double.MAX_VALUE;
             int delays = 0, infractions = 0, routes = 0;
             boolean assigned = false;
+            String status = "Active";
             while ((line = reader.readLine()) != null) {
                 allLines.addElement(line);
                 if (line.startsWith("Entry")) {
@@ -265,6 +266,7 @@ public class DriverAssignment {
                     infractions = 0;
                     routes = 0;
                     assigned = false;
+                    status = "Active";
                 }
                 if (line.startsWith("Driver ID: ")) {
                     id = line.substring("Driver ID: ".length()).trim();
@@ -304,8 +306,11 @@ public class DriverAssignment {
                         routes = 0;
                     }
                 }
+                if (line.startsWith("Status: ")) {
+                    status = line.substring("Status: ".length()).trim();
+                }
                 if (line.startsWith("--------------------------------------------------")) {
-                    if (id != null && proximity != Double.MAX_VALUE && !assigned) {
+                    if (id != null && proximity != Double.MAX_VALUE && !assigned && !status.equalsIgnoreCase("Deleted")) {
                         DriverQ dq = new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays,
                                 infractions, routes);
                         proximityQueue.addElement(dq);
@@ -790,35 +795,65 @@ public class DriverAssignment {
      * Uses license and phone number for disambiguation.
      */
     private void removeDriver() {
-        CustomArrayList<Object> searchResults = searchDriverString("License Number");
+        // Remove by Driver ID
+        System.out.println("Enter: Driver ID");
+        validityString(scanner); // Validate input
+        boolean choice = trueFalse;
+        String userSearchInputString = userStringInput;
 
-        if (searchResults.size() > 1) {
-            CustomArrayList<Object> phoneResults = searchDriverString("Phone Number");
-            CustomArrayList<Object> temp = new CustomArrayList<>();
+        CustomArrayList<Object> results = new CustomArrayList<>();
 
-            for (int i = 0; i < searchResults.size(); i++) {
-                Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                for (int j = 0; j < phoneResults.size(); j++) {
-                    Object candidate = phoneResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
+        if (choice) {
+            System.out.println("Searching for driver with ID matching '" + userSearchInputString + "'");
+            txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+            try (BufferedReader reader = new BufferedReader(new FileReader(txtStorage))) {
+                String line;
+                boolean insideEntry = false;
+                String currentEntryNumber = null;
+                CustomArrayList<String> entryLines = new CustomArrayList<>();
+                while ((line = reader.readLine()) != null) {
+                    String trimmedLine = line.trim();
+                    // Detect entry start
+                    if (!insideEntry && trimmedLine.startsWith("Entry")) {
+                        currentEntryNumber = trimmedLine.replace("Entry", "").trim();
+                        insideEntry = true;
+                        entryLines.clear();
+                        entryLines.addElement(trimmedLine);
                         continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
+                    }
+                    if (insideEntry) {
+                        entryLines.addElement(trimmedLine);
+                        // Detect end of entry block
+                        if (trimmedLine.startsWith("Status:")) {
+                            String matchedFieldValue = null;
+                            for (int i = 0; i < entryLines.size(); i++) {
+                                String e = entryLines.getElement(i).trim();
+                                if (e.startsWith("Driver ID:")) {
+                                    matchedFieldValue = e.substring(e.indexOf(":") + 1).trim();
+                                    break;
+                                }
+                            }
+                            if (matchedFieldValue != null && matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
+                                CustomArrayList<String> oneEntry = new CustomArrayList<>();
+                                oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
+                                for (int i = 0; i < entryLines.size(); i++) {
+                                    oneEntry.addElement(entryLines.getElement(i));
+                                }
+                                results.addElement(oneEntry);
+                            }
+                            insideEntry = false;
+                            currentEntryNumber = null;
+                            entryLines.clear();
+                        }
                     }
                 }
+            } catch (IOException e) {
+                System.out.println("Error reading TXT database: " + e.getMessage());
             }
-            searchResults = temp;
         }
 
-        if (searchResults.size() == 1) {
-            Object entryObj = searchResults.getElement(0);
+        if (results.size() == 1) {
+            Object entryObj = results.getElement(0);
             if (entryObj instanceof CustomArrayList) {
                 CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
                 String header = entry.getElement(0).toString();
@@ -827,7 +862,7 @@ public class DriverAssignment {
             } else {
                 System.out.println("Unexpected result format.");
             }
-        } else if (searchResults.size() == 0) {
+        } else if (results.size() == 0) {
             System.out.println("No matching driver found.");
         } else {
             System.out.println("Multiple entries still match. Manual review may be required.");
