@@ -6,11 +6,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-
 import CustomDataStructures.CustomArrayList;
+// import java.util.ArrayList;
+// import java.util.List;
+import java.util.Scanner;
 
 public class DriverAssignment {
 
@@ -51,7 +50,7 @@ public class DriverAssignment {
         addDriver.addToMenu("Please enter the driver's phone number.");
         addDriver.addToMenu("Please enter the driver's email address.");
         addDriver.addToMenu("Please enter the driver's address.");
-        addDriver.addToMenu("Please enter the maintenance history of the vehicle.");
+        addDriver.addToMenu("Please enter the driver's proximity.");
 
         updateDriver = new BannerElements(userInput, "Update Driver Activity");
         updateDriver.addToMenu("Please enter the driver's ID.");
@@ -97,11 +96,282 @@ public class DriverAssignment {
     }
 
     private void assignDriverMenu() {
-        
+        // New logic: maintain two queues (proximity and experience)
+        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File driverStorage = new File("LogisticsProject/src/finalDatabase/drivers.txt").getAbsoluteFile();
+        if (!detailsFile.exists()) {
+            System.out.println("No driver details found.");
+            return;
+        }
+
+        class DriverQ {
+            String id;
+            double proximity;
+            int experienceScore;
+            int lineIdx;
+            String name;
+            int delays;
+            int infractions;
+            int routes;
+            DriverQ(String id, double proximity, int experienceScore, int lineIdx, String name, int delays, int infractions, int routes) {
+                this.id = id;
+                this.proximity = proximity;
+                this.experienceScore = experienceScore;
+                this.lineIdx = lineIdx;
+                this.name = name;
+                this.delays = delays;
+                this.infractions = infractions;
+                this.routes = routes;
+            }
+        }
+
+        // Build proximityQueue and experienceQueue from driverDetails.txt
+        CustomArrayList<DriverQ> proximityQueue = new CustomArrayList<>();
+        CustomArrayList<DriverQ> experienceQueue = new CustomArrayList<>();
+        CustomArrayList<String> allLines = new CustomArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
+            String line;
+            int idx = 0;
+            int entryStart = -1;
+            String id = null, name = null;
+            double proximity = Double.MAX_VALUE;
+            int delays = 0, infractions = 0, routes = 0;
+            boolean assigned = false;
+            while ((line = reader.readLine()) != null) {
+                allLines.addElement(line);
+                if (line.startsWith("Entry")) {
+                    entryStart = idx;
+                    id = null; name = null; proximity = Double.MAX_VALUE; delays = 0; infractions = 0; routes = 0; assigned = false;
+                }
+                if (line.startsWith("Driver ID: ")) {
+                    id = line.substring("Driver ID: ".length()).trim();
+                }
+                if (line.startsWith("Driver Name: ")) {
+                    name = line.substring("Driver Name: ".length()).trim();
+                }
+                if (line.startsWith("Proximity: ")) {
+                    try {
+                        proximity = Double.parseDouble(line.substring("Proximity: ".length()).trim());
+                    } catch (Exception e) {
+                        proximity = Double.MAX_VALUE;
+                    }
+                }
+                if (line.startsWith("Delays: ")) {
+                    try {
+                        delays = Integer.parseInt(line.substring("Delays: ".length()).trim());
+                    } catch (Exception e) {
+                        delays = 0;
+                    }
+                }
+                if (line.startsWith("Infractions: ")) {
+                    try {
+                        infractions = Integer.parseInt(line.substring("Infractions: ".length()).trim());
+                    } catch (Exception e) {
+                        infractions = 0;
+                    }
+                }
+                if (line.startsWith("Assigned: ")) {
+                    assigned = line.trim().equalsIgnoreCase("Assigned: true");
+                }
+                if (line.startsWith("Assigned Routes: ")) {
+                    String routesStr = line.substring("Assigned Routes: ".length()).trim();
+                    if (!routesStr.isEmpty()) {
+                        routes = routesStr.split(",").length;
+                    } else {
+                        routes = 0;
+                    }
+                }
+                if (line.startsWith("--------------------------------------------------")) {
+                    if (id != null && proximity != Double.MAX_VALUE && !assigned) {
+                        DriverQ dq = new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays, infractions, routes);
+                        proximityQueue.addElement(dq);
+                        experienceQueue.addElement(dq);
+                    }
+                }
+                idx++;
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading driver details: " + e.getMessage());
+            return;
+        }
+
+        DriverQ chosen = null;
+        // Ask user for assignment type
+        int assignType = 0;
+        while (true) {
+            System.out.println("Select assignment type:");
+            System.out.println("1. Assign by proximity");
+            System.out.println("2. Assign by experience/fairness");
+            System.out.print("Enter 1 or 2: ");
+            String assignTypeInput = scanner.nextLine().trim();
+            if (assignTypeInput.equals("1") || assignTypeInput.equals("2")) {
+                assignType = Integer.parseInt(assignTypeInput);
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter 1 or 2.");
+            }
+        }
+        String routeID = null;
+        if (assignType == 1) {
+            // Proximity: lowest number (double)
+            for (int i = 0; i < proximityQueue.size(); i++) {
+                if (chosen == null || proximityQueue.getElement(i).proximity < chosen.proximity) {
+                    chosen = proximityQueue.getElement(i);
+                }
+            }
+        } else {
+            // Experience: fairness logic
+            // 1. On first run, assign all drivers until each has at least one route
+            // 2. On subsequent runs, queue perfect drivers first, then by fewest delays, then by fewest infractions, then by formula
+            // Build lists for each group
+            CustomArrayList<DriverQ> noRoute = new CustomArrayList<>();
+            CustomArrayList<DriverQ> perfect = new CustomArrayList<>();
+            CustomArrayList<DriverQ> fewestDelays = new CustomArrayList<>();
+            CustomArrayList<DriverQ> fewestInfractions = new CustomArrayList<>();
+            CustomArrayList<DriverQ> rest = new CustomArrayList<>();
+            int minDelays = Integer.MAX_VALUE;
+            int minInfractions = Integer.MAX_VALUE;
+            for (int i = 0; i < experienceQueue.size(); i++) {
+                DriverQ dq = experienceQueue.getElement(i);
+                if (dq.routes == 0) {
+                    noRoute.addElement(dq);
+                } else if (dq.delays == 0 && dq.infractions == 0) {
+                    perfect.addElement(dq);
+                } else {
+                    if (dq.delays < minDelays) minDelays = dq.delays;
+                    if (dq.infractions < minInfractions) minInfractions = dq.infractions;
+                }
+            }
+            // Add drivers with fewest delays
+            for (int i = 0; i < experienceQueue.size(); i++) {
+                DriverQ dq = experienceQueue.getElement(i);
+                if (dq.routes > 0 && dq.delays == minDelays && dq.delays > 0) {
+                    fewestDelays.addElement(dq);
+                }
+            }
+            // Add drivers with fewest infractions
+            for (int i = 0; i < experienceQueue.size(); i++) {
+                DriverQ dq = experienceQueue.getElement(i);
+                if (dq.routes > 0 && dq.infractions == minInfractions && dq.infractions > 0) {
+                    fewestInfractions.addElement(dq);
+                }
+            }
+            // Add the rest
+            for (int i = 0; i < experienceQueue.size(); i++) {
+                DriverQ dq = experienceQueue.getElement(i);
+                if (dq.routes > 0 && dq.delays != minDelays && dq.infractions != minInfractions && !(dq.delays == 0 && dq.infractions == 0)) {
+                    rest.addElement(dq);
+                }
+            }
+            // Priority: noRoute > perfect > fewestDelays > fewestInfractions > rest (by formula)
+            CustomArrayList<DriverQ> fairQueue = new CustomArrayList<>();
+            for (int i = 0; i < noRoute.size(); i++) fairQueue.addElement(noRoute.getElement(i));
+            for (int i = 0; i < perfect.size(); i++) fairQueue.addElement(perfect.getElement(i));
+            for (int i = 0; i < fewestDelays.size(); i++) fairQueue.addElement(fewestDelays.getElement(i));
+            for (int i = 0; i < fewestInfractions.size(); i++) fairQueue.addElement(fewestInfractions.getElement(i));
+            for (int i = 0; i < rest.size(); i++) fairQueue.addElement(rest.getElement(i));
+            // Now pick the best from fairQueue using formula: score = 10000/(1+infractions+delays) + routes
+            for (int i = 0; i < fairQueue.size(); i++) {
+                DriverQ dq = fairQueue.getElement(i);
+                if (chosen == null) {
+                    chosen = dq;
+                } else {
+                    int chosenScore = (int)(10000.0/(1+chosen.infractions+chosen.delays) + chosen.routes);
+                    int dqScore = (int)(10000.0/(1+dq.infractions+dq.delays) + dq.routes);
+                    if (dqScore > chosenScore) {
+                        chosen = dq;
+                    }
+                }
+            }
+        }
+        if (chosen == null) {
+            System.out.println("No suitable driver found.");
+            return;
+        }
+
+        // Ask for route to assign only after driver is chosen
+        System.out.print("Enter Route ID to assign: ");
+        routeID = scanner.nextLine().trim();
+
+        // ...existing code for updating driverDetails.txt and drivers.txt...
+        int entryStart = chosen.lineIdx;
+        int entryEnd = chosen.lineIdx;
+        while (entryStart > 0 && !allLines.getElement(entryStart).startsWith("Entry")) entryStart--;
+        while (entryEnd < allLines.size() && !allLines.getElement(entryEnd).startsWith("--------------------------------------------------")) entryEnd++;
+        for (int i = entryStart; i < entryEnd; i++) {
+            String l = allLines.getElement(i);
+            if (l.startsWith("Assigned: ")) {
+                allLines.setElement(i, "Assigned: true");
+            }
+            if (l.startsWith("Assigned Routes: ")) {
+                allLines.setElement(i, "Assigned Routes: " + routeID);
+            }
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(detailsFile))) {
+            for (int i = 0; i < allLines.size(); i++) {
+                writer.write(allLines.getElement(i));
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("Error updating driver assignment status: " + e.getMessage());
+            return;
+        }
+        // Update drivers.txt: accumulate routes as comma-separated
+        CustomArrayList<String> driverLines = new CustomArrayList<>();
+        boolean found = false;
+        String newRoute = routeID;
+        if (driverStorage.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(driverStorage))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith(chosen.id + "|")) {
+                        // Accumulate routes as comma-separated
+                        String[] parts = line.split("\\|", -1);
+                        String routes = parts.length > 2 ? parts[2] : "";
+                        if (!routes.contains(newRoute)) {
+                            if (!routes.isEmpty()) routes += "," + newRoute; else routes = newRoute;
+                        }
+                        String updated = chosen.id + "|" + chosen.name + "|" + routes;
+                        for (int i = 3; i < parts.length; i++) {
+                            updated += "|" + parts[i];
+                        }
+                        driverLines.addElement(updated);
+                        found = true;
+                    } else {
+                        driverLines.addElement(line);
+                    }
+                }
+            } catch (IOException e) { /* ignore */ }
+        }
+        if (!found) {
+            String newLine = chosen.id + "|" + chosen.name + "|" + newRoute;
+            driverLines.addElement(newLine);
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(driverStorage))) {
+            for (int i = 0; i < driverLines.size(); i++) {
+                writer.write(driverLines.getElement(i));
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("Error writing to drivers.txt: " + e.getMessage());
+        }
+        System.out.println("Assigned driver " + chosen.id + " (" + chosen.name + ") to route " + routeID + ".");
+        // Remove assigned driver from queue for this session (if proximity)
+        if (assignType == 1) {
+            for (int i = 0; i < proximityQueue.size(); i++) {
+                if (proximityQueue.getElement(i).id.equals(chosen.id)) {
+                    proximityQueue.removeElement(i);
+                    break;
+                }
+            }
+        }
+        // Return immediately after assignment to prevent double prompt
+    return;
     }
 
     // Helper: check if driverID exists in driverDetails.txt (supports a few common
     // formats)
+
     private boolean driverExistsInDetails(String driverID) {
         File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
         if (!detailsFile.exists())
@@ -114,7 +384,6 @@ public class DriverAssignment {
                 if (trimmed.isEmpty())
                     continue;
 
-                // Format 1: "Driver ID: DRV001"
                 if (trimmed.startsWith("Driver ID:")) {
                     String id = trimmed.substring("Driver ID:".length()).trim();
                     if (driverID.equals(id))
@@ -122,7 +391,6 @@ public class DriverAssignment {
                     continue;
                 }
 
-                // Format 2: pipe-delimited with ID as first field, e.g., "DRV001|John Doe|..."
                 if (trimmed.contains("|")) {
                     String first = trimmed.split("\\|", -1)[0].trim();
                     if (driverID.equals(first))
@@ -130,7 +398,6 @@ public class DriverAssignment {
                     continue;
                 }
 
-                // Format 3: line equals the ID
                 if (driverID.equals(trimmed))
                     return true;
             }
@@ -159,10 +426,33 @@ public class DriverAssignment {
             return;
         }
 
-        // Prompt 1: Route ID
-        System.out.println("\n" + updateDriver.getElement(1));
-        validityString(scanner);
-        String routeID = userStringInput;
+        // Use the currently assigned route from driverDetails.txt
+        String routeID = null;
+        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        if (detailsFile.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
+                String line;
+                boolean insideBlock = false;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("Driver ID: ")) {
+                        insideBlock = line.equals("Driver ID: " + driverID);
+                        continue;
+                    }
+                    if (insideBlock) {
+                        if (line.startsWith("Assigned Routes: ")) {
+                            routeID = line.substring("Assigned Routes: ".length()).trim();
+                            break;
+                        }
+                        if (line.startsWith("Entry")) {
+                            insideBlock = false;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Error reading driverDetails.txt: " + e.getMessage());
+            }
+        }
+        if (routeID == null) routeID = "";
         updateDriverDetails.addElement(routeID);
 
         // Prompt 2: Delay? (yes/no only)
@@ -189,10 +479,9 @@ public class DriverAssignment {
             finalStorageDir.mkdirs();
 
         driverStorage = new File("LogisticsProject/src/finalDatabase/drivers.txt").getAbsoluteFile();
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
 
-        // Step: resolve name from driverDetails.txt if available
-        String resolvedNameFromDetails = null;
+        // Compose full line for drivers.txt: id|name|route|timestamp|delayCount|infractionCount|infractions
+        String driverName = "Unknown";
         if (detailsFile.exists()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
                 String line;
@@ -204,103 +493,118 @@ public class DriverAssignment {
                     }
                     if (insideBlock) {
                         if (line.startsWith("Driver Name: ")) {
-                            resolvedNameFromDetails = line.substring("Driver Name: ".length()).trim();
-                            break;
+                            driverName = line.substring("Driver Name: ".length()).trim();
                         }
                         if (line.startsWith("Entry")) {
                             insideBlock = false;
                         }
                     }
                 }
-            } catch (IOException e) {
-                System.out.println("Error accessing driverDetails.txt: " + e.getMessage());
-            }
+            } catch (IOException e) { /* ignore */ }
         }
-
-        List<String> updatedLines = new ArrayList<>();
+        int delayCount = delayed ? 1 : 0;
+        int infractionCount = infraction.isEmpty() ? 0 : 1;
+        String infractions = infraction.isEmpty() ? "" : infraction;
+        long timestamp = System.currentTimeMillis();
+        String logLine = driverID + "|" + driverName + "|" + routeID + "|" + timestamp + "|" + delayCount + "|" + infractionCount + "|" + infractions;
+        // Only update if Assigned is true
+        if (!isDriverAssigned(driverID)) {
+            System.out.println("Driver is not assigned. Skipping update.");
+            return;
+        }
+        CustomArrayList<String> driverLines = new CustomArrayList<>();
         boolean found = false;
-
-        try {
-            if (driverStorage.exists()) {
-                try (BufferedReader reader = new BufferedReader(new FileReader(driverStorage))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
+        int newDelayCount = delayCount;
+        int newInfractionCount = infractionCount;
+        String newInfractions = infractions;
+        if (driverStorage.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(driverStorage))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith(driverID + "|")) {
+                        // Accumulate routes as comma-separated
                         String[] parts = line.split("\\|", -1);
-                        if (parts.length < 6) {
-                            updatedLines.add(line);
-                            continue;
+                        String routes = parts.length > 2 ? parts[2] : "";
+                        if (!routes.contains(routeID)) {
+                            if (!routes.isEmpty()) routes += "," + routeID; else routes = routeID;
                         }
-
-                        if (parts[0].trim().equals(driverID)) {
-                            found = true;
-
-                            // Replace "Unknown" name if correct name now available
-                            String nameField = parts[1].trim();
-                            if (nameField.equalsIgnoreCase("Unknown") && resolvedNameFromDetails != null) {
-                                nameField = resolvedNameFromDetails;
-                            }
-
-                            String existingRoutes = parts[2].trim();
-                            String routes = existingRoutes.isEmpty() ? routeID : existingRoutes + "," + routeID;
-
-                            int delayCount = safeParseInt(parts[3].trim(), 0);
-                            if (delayed)
-                                delayCount++;
-
-                            int infractionCount = safeParseInt(parts[4].trim(), 0);
-                            String infractions = parts[5].trim();
-                            if (!infraction.isEmpty()) {
-                                infractionCount++;
-                                infractions = infractions.isEmpty() ? infraction : infractions + "," + infraction;
-                            }
-
-                            String updated = String.join("|",
-                                    parts[0].trim(),
-                                    nameField,
-                                    routes,
-                                    String.valueOf(delayCount),
-                                    String.valueOf(infractionCount),
-                                    infractions);
-                            updatedLines.add(updated);
-                        } else {
-                            updatedLines.add(line);
-                        }
+                        String delays = parts.length > 3 ? parts[3] : "0";
+                        String infractionsCount = parts.length > 4 ? parts[4] : "0";
+                        String infractionDetails = parts.length > 5 ? parts[5] : "";
+                        // Sum delay and infraction counts
+                        int totalDelay = 0, totalInfraction = 0;
+                        try { totalDelay = Integer.parseInt(delays); } catch (Exception e) { totalDelay = 0; }
+                        try { totalInfraction = Integer.parseInt(infractionsCount); } catch (Exception e) { totalInfraction = 0; }
+                        totalDelay += newDelayCount;
+                        totalInfraction += newInfractionCount;
+                        // Append infraction details
+                        if (!infractionDetails.isEmpty() && !newInfractions.isEmpty())
+                            infractionDetails += "," + newInfractions;
+                        else if (!newInfractions.isEmpty())
+                            infractionDetails = newInfractions;
+                        String updated = driverID + "|" + driverName + "|" + routes + "|" + totalDelay + "|" + totalInfraction + "|" + infractionDetails;
+                        driverLines.addElement(updated);
+                        found = true;
+                    } else {
+                        driverLines.addElement(line);
                     }
                 }
+            } catch (IOException e) { /* ignore */ }
+        }
+        if (!found) {
+            driverLines.addElement(logLine);
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(driverStorage))) {
+            for (int i = 0; i < driverLines.size(); i++) {
+                writer.write(driverLines.getElement(i));
+                writer.newLine();
             }
-
-            // If driver doesn't exist in drivers.txt, create new entry using known name or
-            // "Unknown"
-            if (!found) {
-                String name = (resolvedNameFromDetails != null) ? resolvedNameFromDetails : "Unknown";
-                String routes = routeID;
-                int delayCount = delayed ? 1 : 0;
-                int infractionCount = infraction.isEmpty() ? 0 : 1;
-                String infractions = infraction.isEmpty() ? "" : infraction;
-
-                String newDriverLine = String.join("|",
-                        driverID, name, routes,
-                        String.valueOf(delayCount),
-                        String.valueOf(infractionCount),
-                        infractions);
-                updatedLines.add(newDriverLine);
-                System.out.println("New driver added to drivers.txt and activity recorded.");
-            }
-
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(driverStorage))) {
-                for (String updatedLine : updatedLines) {
-                    writer.write(updatedLine);
-                    writer.newLine();
-                }
-                System.out.println("Driver activity updated successfully.");
-            }
-
+            System.out.println("Driver activity updated successfully.");
         } catch (IOException e) {
             System.out.println("File access error: " + e.getMessage());
+        }
+
+        // After update, set Assigned: false and Assigned Routes: empty in driverDetails.txt
+        // Update in-place
+        if (detailsFile.exists()) {
+            CustomArrayList<String> allLines = new CustomArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
+                String line;
+                boolean insideBlock = false;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("Driver ID: ")) {
+                        insideBlock = line.equals("Driver ID: " + driverID);
+                        allLines.addElement(line);
+                        continue;
+                    }
+                    if (insideBlock) {
+                        if (line.startsWith("Assigned: ")) {
+                            allLines.addElement("Assigned: false");
+                            continue;
+                        }
+                        if (line.startsWith("Assigned Routes: ")) {
+                            allLines.addElement("Assigned Routes: ");
+                            continue;
+                        }
+                        if (line.startsWith("Entry")) {
+                            insideBlock = false;
+                        }
+                    }
+                    allLines.addElement(line);
+                }
+            } catch (IOException e) { /* ignore */ }
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(detailsFile))) {
+                for (int i = 0; i < allLines.size(); i++) {
+                    String l = allLines.getElement(i);
+                    writer.write(l);
+                    writer.newLine();
+                }
+            } catch (IOException e) { /* ignore */ }
         }
     }
 
     // Inline-safe integer parser for delay/infraction counts
+    @SuppressWarnings("unused")
     private int safeParseInt(String s, int fallback) {
         try {
             return Integer.parseInt(s);
@@ -537,8 +841,20 @@ public class DriverAssignment {
                     validityPhoneString(scanner);
                     addDriverDetails.addElement(userStringInput);
                     break;
+                case 6: // Proximity (should be a number)
+                    double prox = Double.NaN;
+                    while (true) {
+                        String input = scanner.nextLine().trim();
+                        try {
+                            prox = Double.parseDouble(input);
+                            break;
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid input. Please enter a numeric value for proximity.");
+                        }
+                    }
+                    addDriverDetails.addElement(String.valueOf(prox));
+                    break;
                 default:
-                    // Fallback: treat as a normal string field
                     validityString(scanner);
                     addDriverDetails.addElement(userStringInput);
             }
@@ -569,9 +885,11 @@ public class DriverAssignment {
             } else if (index == 5) {
                 addNewEntry.addElement("Driver address: " + addDriverDetails.getElement(index));
             } else if (index == 6) {
-                addNewEntry.addElement("Driver maintenance history: " + addDriverDetails.getElement(index));
+                addNewEntry.addElement("Driver proximity: " + addDriverDetails.getElement(index));
             }
         }
+    // Add assigned status (default: false)
+    addNewEntry.addElement("Assigned: false");
 
         // 3) Persist: saveTXT now receives the ID as the first element
         // Ensure your saveTXT respects this order so search-by-ID works cleanly
@@ -584,16 +902,13 @@ public class DriverAssignment {
     }
 
     public void saveTXT(CustomArrayList<Object> driverDetails) {
-        // Ensure the TXT storage directory exists
         txtStorageDir = new File("LogisticsProject/src/TXTDatabase").getAbsoluteFile();
         if (!txtStorageDir.exists()) {
             txtStorageDir.mkdirs();
         }
 
-        // Define the storage file
         txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
 
-        // Count existing entries
         int entryCount = 1;
         try {
             if (!txtStorage.exists()) {
@@ -609,7 +924,6 @@ public class DriverAssignment {
                 }
             }
 
-            // Build new entry block with updated indices
             StringBuilder newEntry = new StringBuilder();
             newEntry.append("Entry ").append(String.format("%03d", entryCount)).append("\n");
             newEntry.append("Driver ID: ").append(driverDetails.getElement(0)).append("\n");
@@ -618,11 +932,12 @@ public class DriverAssignment {
             newEntry.append("Phone Number: ").append(driverDetails.getElement(3)).append("\n");
             newEntry.append("Email Address: ").append(driverDetails.getElement(4)).append("\n");
             newEntry.append("Address: ").append(driverDetails.getElement(5)).append("\n");
-            newEntry.append("Maintenance History: ").append(driverDetails.getElement(6)).append("\n");
+            newEntry.append("Proximity: ").append(driverDetails.getElement(6)).append("\n");
+            newEntry.append("Assigned: false\n");
+            newEntry.append("Assigned Routes: \n"); // Correct placement
             newEntry.append("Status: Active\n");
             newEntry.append("--------------------------------------------------\n");
 
-            // Append to file
             try (FileWriter writer = new FileWriter(txtStorage, true)) {
                 writer.write(newEntry.toString());
                 System.out.println("Driver entry " + entryCount + " saved successfully.");
@@ -635,19 +950,14 @@ public class DriverAssignment {
 
     public void validityPhoneString(Scanner scanner) {
         while (true) {
-            scanner.nextLine(); // clear buffer
             System.out.print("Enter phone number (digits only): ");
-            try {
-                userStringInput = scanner.nextLine().trim();
-                if (userStringInput.matches("\\d{10,16}")) { // Accepts 10–16 digits
-                    trueFalse = true;
-                    break;
-                } else {
-                    System.out.println("Invalid phone number. Enter 10–16 digits only.");
-                }
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
-                scanner.nextLine(); // clear buffer
+            String s = scanner.nextLine().trim();
+            if (s.matches("\\d{10,16}")) {
+                userStringInput = s;
+                trueFalse = true;
+                break;
+            } else {
+                System.out.println("Invalid phone number. Enter 10–16 digits only.");
             }
         }
     }
@@ -655,9 +965,11 @@ public class DriverAssignment {
     public void validity(Scanner scanner, int i) {
         while (true) {
             System.out.print("Please enter your choice (1 - " + i + "): ");
+            String s = scanner.nextLine().trim();
             try {
-                userInput = scanner.nextInt();
-                if (userInput >= 0 && userInput <= i) {
+                int value = Integer.parseInt(s);
+                if (value >= 0 && value <= i) {
+                    userInput = value;
                     trueFalse = true;
                     break;
                 } else {
@@ -665,46 +977,68 @@ public class DriverAssignment {
                 }
             } catch (Exception e) {
                 System.out.println("Invalid input. Please enter a number. Enter 0 to view the menu");
-                scanner.nextLine(); // clear the buffer
             }
         }
     }
 
     public void validityDouble(Scanner scanner) {
         while (true) {
-            scanner.nextLine(); // clear the buffer
+            System.out.print("Enter a positive double: ");
+            String s = scanner.nextLine().trim();
             try {
-                userDoubleInput = scanner.nextDouble();
-                if (userDoubleInput >= 0) {
+                double value = Double.parseDouble(s);
+                if (value >= 0) {
+                    userDoubleInput = value;
                     trueFalse = true;
                     break;
                 } else {
                     System.out.println("Invalid number. Please enter a positive double.");
                 }
-                break;
             } catch (Exception e) {
                 System.out.println(e + ". Invalid input. Please enter a valid double.");
-                scanner.nextLine(); // clear the buffer
             }
         }
     }
 
     public void validityString(Scanner scanner) {
         while (true) {
-            scanner.nextLine(); // clear the buffer
-            try {
-                userStringInput = scanner.nextLine();
-                if (userStringInput.length() > 0) {
-                    trueFalse = true;
-                    break;
-                } else {
-                    System.out.println("Invalid input. Please enter a non-empty string.");
-                }
-            } catch (Exception e) {
-                System.out.println(e + ". Invalid input. Please enter a valid string.");
-                scanner.nextLine(); // clear the buffer
+            System.out.print("Enter text: ");
+            String s = scanner.nextLine().trim();
+            if (!s.isEmpty()) {
+                userStringInput = s;
+                trueFalse = true;
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter a non-empty string.");
             }
         }
+    }
+
+    // Checks if the driver with the given ID is currently assigned in driverDetails.txt
+    private boolean isDriverAssigned(String driverID) {
+        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        if (!detailsFile.exists()) return false;
+        try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
+            String line;
+            boolean insideBlock = false;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("Driver ID: ")) {
+                    insideBlock = line.equals("Driver ID: " + driverID);
+                    continue;
+                }
+                if (insideBlock) {
+                    if (line.startsWith("Assigned: ")) {
+                        return line.trim().equalsIgnoreCase("Assigned: true");
+                    }
+                    if (line.startsWith("Entry")) {
+                        insideBlock = false;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // ignore
+        }
+        return false;
     }
 
     public static void main(String[] args) {
