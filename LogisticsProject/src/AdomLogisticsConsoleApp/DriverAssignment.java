@@ -12,25 +12,24 @@ import CustomDataStructures.CustomArrayList;
 // import java.util.List;
 import java.util.Scanner;
 
-
 /**
  * Main class for driver assignment, management, and activity tracking.
  * Handles adding, removing, updating, assigning, and viewing drivers.
  */
 public class DriverAssignment {
     // Helper class for queueing drivers for assignment
-    private static class DriverQ {
+    private static class DriverHelperClass {
         String id;
         double proximity;
-    // int experienceScore; // unused
         int lineIdx;
         String name;
         int delays;
         int infractions;
         int routes;
-        private int experienceScore;
+        @SuppressWarnings("unused")
+        int experienceScore;
 
-        DriverQ(String id, double proximity, int experienceScore, int lineIdx, String name, int delays,
+        DriverHelperClass(String id, double proximity, int experienceScore, int lineIdx, String name, int delays,
                 int infractions, int routes) {
             this.id = id;
             this.proximity = proximity;
@@ -63,8 +62,8 @@ public class DriverAssignment {
     File driverStorage;
     File finalStorageDir;
     // Queues for assignment logic
-    CustomDataStructures.CustomQueue<DriverQ> proximityQueue;
-    CustomDataStructures.CustomQueue<DriverQ> experienceQueue;
+    CustomDataStructures.CustomQueue<DriverHelperClass> proximityQueue;
+    CustomDataStructures.CustomQueue<DriverHelperClass> experienceQueue;
 
     /**
      * Constructor: Initializes banners and menu options.
@@ -138,7 +137,8 @@ public class DriverAssignment {
     }
 
     /**
-     * View a driver's activity, including all routes, assignment status, delays, and infractions.
+     * View a driver's activity, including all routes, assignment status, delays,
+     * and infractions.
      */
     private void viewDriverActivity() {
         System.out.println("\n=== View Driver Activity ===");
@@ -154,7 +154,7 @@ public class DriverAssignment {
         String driverName = null;
         String assignmentStatus = null;
         String currentAssignment = null;
-    // boolean found = false; // unused
+        // boolean found = false; // unused
         try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
             String line;
             boolean insideBlock = false;
@@ -248,11 +248,13 @@ public class DriverAssignment {
             return;
         }
 
-    // ...existing code...
+        // ...existing code...
 
-    // Only add new free drivers to queue if not already present
-    if (proximityQueue == null) proximityQueue = new CustomDataStructures.CustomQueue<>();
-    if (experienceQueue == null) experienceQueue = new CustomDataStructures.CustomQueue<>();
+        // Only add new free drivers to queue if not already present
+        if (proximityQueue == null)
+            proximityQueue = new CustomDataStructures.CustomQueue<>();
+        if (experienceQueue == null)
+            experienceQueue = new CustomDataStructures.CustomQueue<>();
         CustomArrayList<String> allLines = new CustomArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
             String line;
@@ -318,12 +320,13 @@ public class DriverAssignment {
                     status = line.substring("Status: ".length()).trim();
                 }
                 if (line.startsWith("--------------------------------------------------")) {
-                    if (id != null && proximity != Double.MAX_VALUE && !assigned && !status.equalsIgnoreCase("Deleted")) {
+                    if (id != null && proximity != Double.MAX_VALUE && !assigned
+                            && !status.equalsIgnoreCase("Deleted")) {
                         boolean alreadyInProximity = false;
                         boolean alreadyInExperience = false;
                         // Check if driver is already in proximityQueue
                         for (int i = 0; i < proximityQueue.size(); i++) {
-                            DriverQ dq = proximityQueue.peek();
+                            DriverHelperClass dq = proximityQueue.peek();
                             proximityQueue.enqueue(proximityQueue.dequeue());
                             if (dq.id.equals(id)) {
                                 alreadyInProximity = true;
@@ -331,7 +334,7 @@ public class DriverAssignment {
                             }
                         }
                         for (int i = 0; i < experienceQueue.size(); i++) {
-                            DriverQ dq = experienceQueue.peek();
+                            DriverHelperClass dq = experienceQueue.peek();
                             experienceQueue.enqueue(experienceQueue.dequeue());
                             if (dq.id.equals(id)) {
                                 alreadyInExperience = true;
@@ -339,10 +342,12 @@ public class DriverAssignment {
                             }
                         }
                         if (!alreadyInProximity) {
-                            proximityQueue.enqueue(new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays, infractions, routes));
+                            proximityQueue.enqueue(new DriverHelperClass(id, proximity, 0, entryStart,
+                                    name == null ? "" : name, delays, infractions, routes));
                         }
                         if (!alreadyInExperience) {
-                            experienceQueue.enqueue(new DriverQ(id, proximity, 0, entryStart, name == null ? "" : name, delays, infractions, routes));
+                            experienceQueue.enqueue(new DriverHelperClass(id, proximity, 0, entryStart,
+                                    name == null ? "" : name, delays, infractions, routes));
                         }
                     }
                 }
@@ -353,7 +358,7 @@ public class DriverAssignment {
             return;
         }
 
-        DriverQ chosen = null;
+        DriverHelperClass chosen = null;
         // Ask user for assignment type
         int assignType = 0;
         while (true) {
@@ -373,7 +378,7 @@ public class DriverAssignment {
         if (assignType == 1) {
             // Proximity: lowest number (double)
             for (int i = 0; i < proximityQueue.size(); i++) {
-                DriverQ dq = proximityQueue.peek();
+                DriverHelperClass dq = proximityQueue.peek();
                 // Remove and re-add to preserve queue order
                 proximityQueue.enqueue(proximityQueue.dequeue());
                 if (chosen == null || dq.proximity < chosen.proximity) {
@@ -386,15 +391,15 @@ public class DriverAssignment {
             // 2. On subsequent runs, queue perfect drivers first, then by fewest delays,
             // then by fewest infractions, then by formula
             // Build lists for each group
-            CustomArrayList<DriverQ> noRoute = new CustomArrayList<>();
-            CustomArrayList<DriverQ> perfect = new CustomArrayList<>();
-            CustomArrayList<DriverQ> fewestDelays = new CustomArrayList<>();
-            CustomArrayList<DriverQ> fewestInfractions = new CustomArrayList<>();
-            CustomArrayList<DriverQ> rest = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> noRoute = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> perfect = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> fewestDelays = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> fewestInfractions = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> rest = new CustomArrayList<>();
             int minDelays = Integer.MAX_VALUE;
             int minInfractions = Integer.MAX_VALUE;
             for (int i = 0; i < experienceQueue.size(); i++) {
-                DriverQ dq = experienceQueue.peek();
+                DriverHelperClass dq = experienceQueue.peek();
                 experienceQueue.enqueue(experienceQueue.dequeue());
                 if (dq.routes == 0) {
                     noRoute.addElement(dq);
@@ -409,7 +414,7 @@ public class DriverAssignment {
             }
             // Add drivers with fewest delays
             for (int i = 0; i < experienceQueue.size(); i++) {
-                DriverQ dq = experienceQueue.peek();
+                DriverHelperClass dq = experienceQueue.peek();
                 experienceQueue.enqueue(experienceQueue.dequeue());
                 if (dq.routes > 0 && dq.delays == minDelays && dq.delays > 0) {
                     fewestDelays.addElement(dq);
@@ -417,7 +422,7 @@ public class DriverAssignment {
             }
             // Add drivers with fewest infractions
             for (int i = 0; i < experienceQueue.size(); i++) {
-                DriverQ dq = experienceQueue.peek();
+                DriverHelperClass dq = experienceQueue.peek();
                 experienceQueue.enqueue(experienceQueue.dequeue());
                 if (dq.routes > 0 && dq.infractions == minInfractions && dq.infractions > 0) {
                     fewestInfractions.addElement(dq);
@@ -425,7 +430,7 @@ public class DriverAssignment {
             }
             // Add the rest
             for (int i = 0; i < experienceQueue.size(); i++) {
-                DriverQ dq = experienceQueue.peek();
+                DriverHelperClass dq = experienceQueue.peek();
                 experienceQueue.enqueue(experienceQueue.dequeue());
                 if (dq.routes > 0 && dq.delays != minDelays && dq.infractions != minInfractions
                         && !(dq.delays == 0 && dq.infractions == 0)) {
@@ -434,7 +439,7 @@ public class DriverAssignment {
             }
             // Priority: noRoute > perfect > fewestDelays > fewestInfractions > rest (by
             // formula)
-            CustomArrayList<DriverQ> fairQueue = new CustomArrayList<>();
+            CustomArrayList<DriverHelperClass> fairQueue = new CustomArrayList<>();
             for (int i = 0; i < noRoute.size(); i++)
                 fairQueue.addElement(noRoute.getElement(i));
             for (int i = 0; i < perfect.size(); i++)
@@ -448,7 +453,7 @@ public class DriverAssignment {
             // Now pick the best from fairQueue using formula: score =
             // 10000/(1+infractions+delays) + routes
             for (int i = 0; i < fairQueue.size(); i++) {
-                DriverQ dq = fairQueue.getElement(i);
+                DriverHelperClass dq = fairQueue.getElement(i);
                 if (chosen == null) {
                     chosen = dq;
                 } else {
@@ -542,9 +547,9 @@ public class DriverAssignment {
         // Remove assigned driver from queue for this session (if proximity)
         if (assignType == 1) {
             // Remove assigned driver from queue for this session
-            CustomDataStructures.CustomQueue<DriverQ> tempQueue = new CustomDataStructures.CustomQueue<>();
+            CustomDataStructures.CustomQueue<DriverHelperClass> tempQueue = new CustomDataStructures.CustomQueue<>();
             while (!proximityQueue.isEmpty()) {
-                DriverQ dq = proximityQueue.dequeue();
+                DriverHelperClass dq = proximityQueue.dequeue();
                 if (!dq.id.equals(chosen.id)) {
                     tempQueue.enqueue(dq);
                 }
@@ -599,7 +604,8 @@ public class DriverAssignment {
     }
 
     /**
-     * Updates a driver's activity (route, delay, infraction) and accumulates history.
+     * Updates a driver's activity (route, delay, infraction) and accumulates
+     * history.
      * Also resets assignment status after update.
      */
     private void updateDriverActivity() {
@@ -874,7 +880,8 @@ public class DriverAssignment {
                                     break;
                                 }
                             }
-                            if (matchedFieldValue != null && matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
+                            if (matchedFieldValue != null
+                                    && matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
                                 CustomArrayList<String> oneEntry = new CustomArrayList<>();
                                 oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
                                 for (int i = 0; i < entryLines.size(); i++) {
@@ -1285,7 +1292,8 @@ public class DriverAssignment {
     // Checks if the driver with the given ID is currently assigned in
     // driverDetails.txt
     /**
-     * Checks if the driver with the given ID is currently assigned in driverDetails.txt.
+     * Checks if the driver with the given ID is currently assigned in
+     * driverDetails.txt.
      */
     private boolean isDriverAssigned(String driverID) {
         File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
