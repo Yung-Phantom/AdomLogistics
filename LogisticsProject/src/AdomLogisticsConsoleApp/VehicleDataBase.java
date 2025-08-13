@@ -59,85 +59,86 @@ public class VehicleDataBase {
     }
 
     public void addVehicle() {
-    addVehicleDetails = new CustomArrayList<>();
-    addNewEntry = new CustomArrayList<>();
-    for (int i = 0; i < addVehicle.size(); i++) {
-        System.out.println(addVehicle.getElement(i));
-        switch (i) {
-            case 0:
-            case 4:
-            case 5:
-                // For 0 (reg no) and 4 (driver ID), we’ll handle differently below
-                // For 5 (maintenance), we’ll use nextLine() to allow spaces
-                break;
-            case 1:
-                scanner.nextLine();
+        addVehicleDetails = new CustomArrayList<>();
+        addNewEntry = new CustomArrayList<>();
+        for (int i = 0; i < addVehicle.size(); i++) {
+            System.out.println(addVehicle.getElement(i));
+            switch (i) {
+                case 0:
+                case 4:
+                case 5:
+                    // For 0 (reg no) and 4 (driver ID), we’ll handle differently below
+                    // For 5 (maintenance), we’ll use nextLine() to allow spaces
+                    break;
+                case 1:
+                    scanner.nextLine();
+                    while (true) {
+                        userStringInput = scanner.nextLine().trim();
+                        if (userStringInput.equalsIgnoreCase("truck") || userStringInput.equalsIgnoreCase("van")) {
+                            addVehicleDetails.addElement(userStringInput);
+                            break;
+                        } else {
+                            System.out.println("Invalid input. Please enter either 'truck' or 'van'.");
+                        }
+                    }
+                    break;
+                case 2:
+                case 3:
+                    userDoubleInput = scanner.nextDouble();
+                    addVehicleDetails.addElement(userDoubleInput);
+                    break;
+                default:
+                    break;
+            }
+
+            // Handle the fields that need special care after the switch to minimize
+            // disruption
+            if (i == 0) { // registration number (token OK)
+                scanner.nextLine(); // clear buffer
+                userStringInput = scanner.next().trim();
+                addVehicleDetails.addElement(userStringInput);
+            } else if (i == 4) { // driver ID with validation loop
+                scanner.nextLine(); // clear buffer after doubles/types
                 while (true) {
-                    userStringInput = scanner.nextLine().trim();
-                    if (userStringInput.equalsIgnoreCase("truck") || userStringInput.equalsIgnoreCase("van")) {
+                    userStringInput = scanner.next().trim();
+                    if (doesDriverExist(userStringInput)) {
                         addVehicleDetails.addElement(userStringInput);
                         break;
                     } else {
-                        System.out.println("Invalid input. Please enter either 'truck' or 'van'.");
+                        System.out.println("Driver ID \"" + userStringInput + "\" not found. Enter a valid driver ID:");
                     }
                 }
-                break;
-            case 2:
-            case 3:
-                userDoubleInput = scanner.nextDouble();
-                addVehicleDetails.addElement(userDoubleInput);
-                break;
-            default:
-                break;
-        }
-
-        // Handle the fields that need special care after the switch to minimize disruption
-        if (i == 0) { // registration number (token OK)
-            scanner.nextLine(); // clear buffer
-            userStringInput = scanner.next().trim();
-            addVehicleDetails.addElement(userStringInput);
-        } else if (i == 4) { // driver ID with validation loop
-            scanner.nextLine(); // clear buffer after doubles/types
-            while (true) {
-                userStringInput = scanner.next().trim();
-                if (doesDriverExist(userStringInput)) {
-                    addVehicleDetails.addElement(userStringInput);
-                    break;
-                } else {
-                    System.out.println("Driver ID \"" + userStringInput + "\" not found. Enter a valid driver ID:");
-                }
+            } else if (i == 5) { // maintenance history (allow spaces)
+                scanner.nextLine(); // clear buffer
+                userStringInput = scanner.nextLine().trim();
+                addVehicleDetails.addElement(userStringInput);
             }
-        } else if (i == 5) { // maintenance history (allow spaces)
-            scanner.nextLine(); // clear buffer
-            userStringInput = scanner.nextLine().trim();
-            addVehicleDetails.addElement(userStringInput);
         }
-    }
 
-    System.out.println("Operation successful");
-    for (int index = 0; index < addVehicleDetails.size(); index++) {
-        if (index == 0) {
-            addNewEntry.addElement("Registration number: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
-        } else if (index == 1) {
-            addNewEntry.addElement("Vehicle type: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
-        } else if (index == 2) {
-            addNewEntry.addElement("Vehicle milage: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
-        } else if (index == 3) {
-            addNewEntry.addElement("Vehicle fuel usage: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
-        } else if (index == 4) {
-            addNewEntry.addElement("Driver ID: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
-        } else if (index == 5) {
-            addNewEntry.addElement("Vehicle maintenance history: " + addVehicleDetails.getElement(index));
-            System.out.println(addNewEntry.getElement(index));
+        System.out.println("Operation successful");
+        for (int index = 0; index < addVehicleDetails.size(); index++) {
+            if (index == 0) {
+                addNewEntry.addElement("Registration number: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            } else if (index == 1) {
+                addNewEntry.addElement("Vehicle type: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            } else if (index == 2) {
+                addNewEntry.addElement("Vehicle milage: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            } else if (index == 3) {
+                addNewEntry.addElement("Vehicle fuel usage: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            } else if (index == 4) {
+                addNewEntry.addElement("Driver ID: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            } else if (index == 5) {
+                addNewEntry.addElement("Vehicle maintenance history: " + addVehicleDetails.getElement(index));
+                System.out.println(addNewEntry.getElement(index));
+            }
         }
+        saveJSON(addVehicleDetails);
     }
-    saveJSON(addVehicleDetails);
-}
 
     public void saveJSON(CustomArrayList<Object> vehicleDetails) {
         // Ensure the JSON storage directory exists
@@ -1011,23 +1012,23 @@ public class VehicleDataBase {
     }
 
     public void validityDouble(Scanner scanner) {
-    while (true) {
-        scanner.nextLine(); // clear the buffer
-        try {
-            userDoubleInput = scanner.nextDouble();
-            if (userDoubleInput >= 0) {
-                trueFalse = true;
-                break;
-            } else {
-                System.out.println("Invalid number. Please enter a positive double.");
-                // no break here; keep looping
+        while (true) {
+            scanner.nextLine(); // clear the buffer
+            try {
+                userDoubleInput = scanner.nextDouble();
+                if (userDoubleInput >= 0) {
+                    trueFalse = true;
+                    break;
+                } else {
+                    System.out.println("Invalid number. Please enter a positive double.");
+                    // no break here; keep looping
+                }
+            } catch (Exception e) {
+                System.out.println(e + ". Invalid input. Please enter a valid double.");
+                scanner.nextLine(); // clear the buffer and retry
             }
-        } catch (Exception e) {
-            System.out.println(e + ". Invalid input. Please enter a valid double.");
-            scanner.nextLine(); // clear the buffer and retry
         }
     }
-}
 
     public void validityString(Scanner scanner) {
         while (true) {
