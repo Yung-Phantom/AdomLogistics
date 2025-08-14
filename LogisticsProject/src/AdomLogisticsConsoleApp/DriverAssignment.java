@@ -482,6 +482,14 @@ public class DriverAssignment {
         while (entryEnd < allLines.size()
                 && !allLines.getElement(entryEnd).startsWith("--------------------------------------------------"))
             entryEnd++;
+        // First, set Last Update: false for all entries
+        for (int idx = 0; idx < allLines.size(); idx++) {
+            String l = allLines.getElement(idx);
+            if (l.startsWith("Last Update:")) {
+                allLines.setElement(idx, "Last Update: false");
+            }
+        }
+        // Then, update the assigned entry
         for (int i = entryStart; i < entryEnd; i++) {
             String l = allLines.getElement(i);
             if (l.startsWith("Assigned: ")) {
@@ -489,6 +497,9 @@ public class DriverAssignment {
             }
             if (l.startsWith("Assigned Routes: ")) {
                 allLines.setElement(i, "Assigned Routes: " + routeID);
+            }
+            if (l.startsWith("Last Update:")) {
+                allLines.setElement(i, "Last Update: true");
             }
         }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(detailsFile))) {
@@ -558,6 +569,12 @@ public class DriverAssignment {
                 proximityQueue.enqueue(tempQueue.dequeue());
             }
         }
+            // Update delivery status and vehicle registration after assignment
+            try {
+                DeliveryTracking.processDelivery();
+            } catch (Exception e) {
+                System.out.println("Error updating delivery status: " + e.getMessage());
+            }
         // Return immediately after assignment to prevent double prompt
         return;
     }
@@ -626,6 +643,12 @@ public class DriverAssignment {
             System.out.println("Activity update cancelled.\n");
             return;
         }
+            // Update delivery status and vehicle registration after driver activity update
+            try {
+                DeliveryTracking.processDelivery();
+            } catch (Exception e) {
+                System.out.println("Error updating delivery status: " + e.getMessage());
+            }
 
         // Use the currently assigned route from driverDetails.txt
         String routeID = null;
@@ -1200,6 +1223,7 @@ public class DriverAssignment {
             newEntry.append("Assigned: false\n");
             newEntry.append("Assigned Routes: \n"); // Correct placement
             newEntry.append("Status: Active\n");
+            newEntry.append("Last Update: false\n");
             newEntry.append("--------------------------------------------------\n");
 
             try (FileWriter writer = new FileWriter(txtStorage, true)) {
