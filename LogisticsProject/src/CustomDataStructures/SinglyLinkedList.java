@@ -102,12 +102,28 @@ public class SinglyLinkedList<E> {
         }
         return current;
     }
-    public void displayNodeAt(int i){
+
+    public void displayNodeAt(int i) {
         if (i < 0 || i >= size) {
             System.out.println("Index out of bounds");
             return;
         }
         E display = getNodeAt(i).data;
         System.out.println("Node at index " + i + ": " + display);
+    }
+
+    public NodeElements<E> getHead() {
+        return getNodeAt(0);
+    }
+
+    public NodeElements<E> getTail() {
+        return getNodeAt(size - 1);
+    }
+
+    public boolean isEmpty() {
+        return head == null;
+    }
+    public E getElement(int i){
+        return getNodeAt(i).data;
     }
 }

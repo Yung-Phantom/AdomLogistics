@@ -1,7 +1,6 @@
 package AdomLogisticsConsoleApp;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -12,7 +11,7 @@ import java.util.Scanner;
 import CustomDataStructures.CustomArrayList;
 
 public class DeliveryTracking {
-    
+
     BannerElements bElements;
     BannerElements addPackage;
     BannerElements packageViews;
@@ -35,6 +34,8 @@ public class DeliveryTracking {
     DoublyLinkedList<String> statusList;
     String userStringInput;
     double userDoubleInput;
+    static String lastVehicleReg;
+    static String lastDriverId;
 
     public DeliveryTracking(int width) {
         bElements = new BannerElements(width, "Adom Logistics Delivery Tracking");
@@ -379,8 +380,10 @@ public class DeliveryTracking {
             newEntry.append("Package origin: ").append(addPackageDetails.getElement(2)).append("\n");
             newEntry.append("Package destination: ").append(addPackageDetails.getElement(3)).append("\n");
             newEntry.append("Package ETA: ").append(addPackageDetails.getElement(4)).append("\n");
-            newEntry.append("Assigned to: \n");
-            newEntry.append("Vehicle Registration: \n");
+            newEntry.append("Assigned to: ").append(lastDriverId != null ? lastDriverId : "null").append("\n");
+            newEntry.append("Vehicle Registration: ").append(lastVehicleReg != null ? lastVehicleReg : "null")
+                    .append("\n");
+
             newEntry.append("Status: Pending\n");
             newEntry.append("--------------------------------------------------\n");
 
@@ -453,133 +456,11 @@ public class DeliveryTracking {
     }
 
     /**
-     * Automatically updates packageDetails.txt for all pending/in transit deliveries
+     * Automatically updates packageDetails.txt for all pending/in transit
+     * deliveries
      * using the last updated driver (Last Update: true) from driverDetails.txt.
      * Sets Assigned to, Vehicle Registration, and Status as needed.
      */
-    public static void processDelivery() {
-        File packageDetails = new File("LogisticsProject/src/TXTDatabase/packageDetails.txt").getAbsoluteFile();
-        File driverDetails = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
-        File jsonFile = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-        if (!packageDetails.exists() || !driverDetails.exists() || !jsonFile.exists()) {
-            System.out.println("Required details file(s) missing.");
-            return;
-        }
-        // Find last updated driver
-        String lastDriverId = null;
-        try (BufferedReader reader = new BufferedReader(new FileReader(driverDetails))) {
-            String line;
-            boolean insideEntry = false;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("Entry")) {
-                    insideEntry = true;
-                }
-                if (insideEntry && line.startsWith("Last Update: true")) {
-                    // Find Driver ID in this block
-                    BufferedReader blockReader = new BufferedReader(new FileReader(driverDetails));
-                    String blockLine;
-                    boolean blockInside = false;
-                    while ((blockLine = blockReader.readLine()) != null) {
-                        if (blockLine.startsWith("Entry")) blockInside = true;
-                        if (blockInside && blockLine.startsWith("Driver ID:")) {
-                            lastDriverId = blockLine.substring("Driver ID:".length()).trim();
-                        }
-                        if (blockInside && blockLine.startsWith("Last Update: true")) break;
-                        if (blockInside && blockLine.startsWith("--------------------------------------------------")) blockInside = false;
-                    }
-                    blockReader.close();
-                    break;
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
-            return;
-        }
-        if (lastDriverId == null || lastDriverId.isEmpty()) {
-            System.out.println("No last updated driver found.");
-            return;
-        }
-        // Get vehicle registration from jsonStorage.json using lastDriverId
-        String lastVehicleReg = null;
-        try (BufferedReader jsonReader = new BufferedReader(new FileReader(jsonFile))) {
-            StringBuilder jsonContent = new StringBuilder();
-            String line;
-            while ((line = jsonReader.readLine()) != null) {
-                jsonContent.append(line);
-            }
-            String json = jsonContent.toString();
-            // Find the registrationNumber for the correct driverID
-            String search = "\"driverID\": \"" + lastDriverId + "\"";
-            int idx = json.indexOf(search);
-            if (idx != -1) {
-                // Find the nearest registrationNumber before driverID
-                int regIdx = json.lastIndexOf("\"registrationNumber\": ", idx);
-                if (regIdx != -1) {
-                    int start = json.indexOf('"', regIdx + 22) + 1;
-                    int end = json.indexOf('"', start);
-                    lastVehicleReg = json.substring(start, end);
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading jsonStorage.json: " + e.getMessage());
-        }
-        if (lastVehicleReg == null || lastVehicleReg.isEmpty()) {
-            lastVehicleReg = "null";
-        }
-        // Update all pending/in transit deliveries
-        CustomArrayList<String> allLines = new CustomArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(packageDetails))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                allLines.addElement(line);
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading packageDetails.txt: " + e.getMessage());
-            return;
-        }
-        boolean insideEntry = false;
-        String currentStatus = "";
-        for (int i = 0; i < allLines.size(); i++) {
-            String l = allLines.getElement(i);
-            if (l.startsWith("Entry ")) {
-                insideEntry = true;
-                currentStatus = "";
-            }
-            if (insideEntry && l.startsWith("Status:")) {
-                currentStatus = l.substring("Status:".length()).trim();
-            }
-            if (insideEntry && (currentStatus.equalsIgnoreCase("Pending") || currentStatus.equalsIgnoreCase("In Transit"))) {
-                // Always update Assigned to and Vehicle Registration fields
-                if (l.startsWith("Assigned to:")) {
-                    allLines.setElement(i, "Assigned to: " + lastDriverId);
-                }
-                if (l.startsWith("Vehicle Registration:")) {
-                    allLines.setElement(i, "Vehicle Registration: " + lastVehicleReg);
-                }
-                // Status update logic
-                if (l.startsWith("Status:")) {
-                    if (currentStatus.equalsIgnoreCase("Pending")) {
-                        allLines.setElement(i, "Status: In Transit");
-                    } else if (currentStatus.equalsIgnoreCase("In Transit")) {
-                        allLines.setElement(i, "Status: Delivered");
-                    }
-                }
-            }
-            if (l.startsWith("--------------------------------------------------")) {
-                insideEntry = false;
-            }
-        }
-        // Write back to file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetails))) {
-            for (int i = 0; i < allLines.size(); i++) {
-                writer.write(allLines.getElement(i));
-                writer.newLine();
-            }
-            System.out.println("Package assigned to " + lastDriverId + ".");
-        } catch (IOException e) {
-            System.out.println("Error writing to packageDetails.txt: " + e.getMessage());
-        }
-    }
 
     public void validity(Scanner scanner, int i) {
         while (true) {
@@ -640,4 +521,7 @@ public class DeliveryTracking {
         deliveryTracking.selectMenuItem();
     }
 
+
 }
+
+// remember to add the assigned to and vehicle registration

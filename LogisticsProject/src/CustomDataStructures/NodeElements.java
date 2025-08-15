@@ -1,8 +1,8 @@
 package CustomDataStructures;
 
 public class NodeElements<E> {
-    E data;
-    NodeElements<E> next;
+    public E data;
+    public NodeElements<E> next;
     NodeElements<E> previous;
 
     public void SinglyNodeElements(E data) {

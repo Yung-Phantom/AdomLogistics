@@ -8,6 +8,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import CustomDataStructures.CustomArrayList;
+import CustomDataStructures.DoublyLinkedList;
+
 // import java.util.ArrayList;
 // import java.util.List;
 import java.util.Scanner;
@@ -470,11 +472,9 @@ public class DriverAssignment {
             return;
         }
 
-        // Ask for route to assign only after driver is chosen
         System.out.print("Enter Route ID to assign: ");
         routeID = scanner.nextLine().trim();
 
-        // ...existing code for updating driverDetails.txt and drivers.txt...
         int entryStart = chosen.lineIdx;
         int entryEnd = chosen.lineIdx;
         while (entryStart > 0 && !allLines.getElement(entryStart).startsWith("Entry"))
@@ -569,16 +569,219 @@ public class DriverAssignment {
                 proximityQueue.enqueue(tempQueue.dequeue());
             }
         }
-            // Update delivery status and vehicle registration after assignment
-            try {
-                DeliveryTracking.processDelivery();
-            } catch (Exception e) {
-                System.out.println("Error updating delivery status: " + e.getMessage());
-            }
-        // Return immediately after assignment to prevent double prompt
+        deliveryInTransit();
         return;
     }
 
+    public void deliveryInTransit() {
+        File packageDetailsFile = new File("LogisticsProject/src/TXTDatabase/packageDetails.txt").getAbsoluteFile();
+        File driverDetailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File jsonStorageFile = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
+
+        String lastDriverID = null;
+        String vehicleReg = null;
+
+        // Step 1: Check driverDetails for the last updated driver
+        try (BufferedReader reader = new BufferedReader(new FileReader(driverDetailsFile))) {
+            String line;
+            StringBuilder content = new StringBuilder();
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+
+            String data = content.toString();
+            int updateIdx = data.indexOf("Last Update: true");
+            if (updateIdx == -1) {
+                System.out.println("No driver with 'Last Update: true' found.");
+                return;
+            }
+
+            int idIdx = data.lastIndexOf("Driver ID: ", updateIdx);
+            int idEnd = data.indexOf("\n", idIdx);
+            lastDriverID = data.substring(idIdx + 11, idEnd).trim();
+
+        } catch (IOException e) {
+            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
+            return;
+        }
+
+        if (lastDriverID == null) {
+            System.out.println("Could not extract last updated driver ID.");
+            return;
+        }
+
+        // Step 2: Get vehicle registration from jsonStorage
+        try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorageFile))) {
+            String line;
+            boolean insideEntry = false;
+            boolean matchFound = false;
+
+            DoublyLinkedList<String> entryLines = new DoublyLinkedList<>();
+
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+
+                // Detect start of entry block
+                if (!insideEntry && trimmed.startsWith("\"Entry")) {
+                    insideEntry = true;
+                    entryLines.clear();
+                    entryLines.insertBack(trimmed);
+                    continue;
+                }
+
+                if (insideEntry) {
+                    entryLines.insertBack(trimmed);
+
+                    // Detect end of entry block
+                    if (trimmed.equals("]") || trimmed.equals("],")) {
+                        String foundDriverID = null;
+                        String foundReg = null;
+
+                        for (int i = 0; i < entryLines.size(); i++) {
+                            String field = entryLines.getElement(i);
+                            if (field.startsWith("\"driverID\"")) {
+                                int colon = field.indexOf(":");
+                                if (colon != -1) {
+                                    foundDriverID = field.substring(colon + 1).replace("\"", "").replace(",", "")
+                                            .trim();
+                                }
+                            }
+
+                            if (field.startsWith("\"registrationNumber\"")) {
+                                int colon = field.indexOf(":");
+                                if (colon != -1) {
+                                    foundReg = field.substring(colon + 1).replace("\"", "").replace(",", "").trim();
+                                }
+                            }
+                        }
+
+                        if (foundDriverID != null && foundDriverID.equalsIgnoreCase(lastDriverID)) {
+                            vehicleReg = foundReg;
+                            matchFound = true;
+                            break;
+                        }
+
+                        insideEntry = false;
+                        entryLines.clear();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading jsonStorage.json: " + e.getMessage());
+            return;
+        }
+
+        if (vehicleReg == null) {
+            System.out.println("No vehicle registration found for driver ID: " + lastDriverID);
+            return;
+        }
+
+        // Step 3: Load packageDetails.txt and update all packages
+        try {
+            DoublyLinkedList<String> allLines = new DoublyLinkedList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(packageDetailsFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    allLines.insertBack(line);
+                }
+            }
+
+            for (int i = 0; i < allLines.size(); i++) {
+                String line = allLines.getElement(i);
+
+                if (line.startsWith("Entry")) {
+                    allLines.removeAt(i);
+                    allLines.addAt(++i, "Assigned to: " + lastDriverID);
+                    allLines.addAt(++i, "Vehicle Registration: " + vehicleReg);
+                    allLines.addAt(++i, "Status: In Transit");
+                    allLines.addAt(++i, "--------------------------------------------------");
+                }
+            }
+
+            // Write changes back to file
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetailsFile))) {
+                for (int i = 0; i < allLines.size(); i++) {
+                    writer.write(allLines.getElement(i));
+                    writer.newLine();
+                }
+            }
+
+            System.out.println("All packages updated successfully (assigned to driver: " + lastDriverID + ").");
+
+        } catch (IOException e) {
+            System.out.println("Error processing packageDetails.txt: " + e.getMessage());
+        }
+    }
+
+    public void deliveryComplete(String driverID) {
+        File packageDetailsFile = new File("LogisticsProject/src/TXTDatabase/packageDetails.txt").getAbsoluteFile();
+
+        try {
+            CustomArrayList<String> allLines = new CustomArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(packageDetailsFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    allLines.addElement(line);
+                }
+            }
+
+            int entryStart = -1;
+            int entryEnd = -1;
+            boolean foundFirst = false;
+
+            for (int i = 0; i < allLines.size(); i++) {
+                String line = allLines.getElement(i).trim();
+
+                if (!foundFirst && line.startsWith("Entry")) {
+                    entryStart = i;
+                    foundFirst = true;
+                }
+
+                if (foundFirst && line.startsWith("--------------------------------------------------")) {
+                    entryEnd = i;
+                    break;
+                }
+            }
+
+            if (entryStart == -1 || entryEnd == -1) {
+                System.out.println("No valid package entry found.");
+                return;
+            }
+
+            boolean updated = false;
+            String assignedDriverID = null;
+            for (int i = entryStart; i < entryEnd; i++) {
+                String line = allLines.getElement(i);
+
+                if (line.startsWith("Assigned to:")) {
+                    assignedDriverID = line.substring(13).trim();
+                }
+
+                if (line.startsWith("Status: In Transit") && assignedDriverID.equals(driverID)) {
+                    allLines.setElement(i, "Status: Delivered");
+                    updated = true;
+                }
+            }
+
+            if (!updated) {
+                System.out.println("No package found with status 'In Transit' assigned to driver ID: " + driverID);
+                return;
+            }
+
+            // Write changes back to file
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetailsFile))) {
+                for (int i = 0; i < allLines.size(); i++) {
+                    writer.write(allLines.getElement(i));
+                    writer.newLine();
+                }
+            }
+
+            System.out.println("Package status updated to 'Delivered' for driver ID: " + driverID);
+
+        } catch (IOException e) {
+            System.out.println("Error processing packageDetails.txt: " + e.getMessage());
+        }
+    }
     // Helper: check if driverID exists in driverDetails.txt (supports a few common
     // formats)
 
@@ -643,12 +846,12 @@ public class DriverAssignment {
             System.out.println("Activity update cancelled.\n");
             return;
         }
-            // Update delivery status and vehicle registration after driver activity update
-            try {
-                DeliveryTracking.processDelivery();
-            } catch (Exception e) {
-                System.out.println("Error updating delivery status: " + e.getMessage());
-            }
+        // Update delivery status and vehicle registration after driver activity update
+        try {
+            deliveryComplete(driverID);
+        } catch (Exception e) {
+            System.out.println("Error updating delivery status: " + e.getMessage());
+        }
 
         // Use the currently assigned route from driverDetails.txt
         String routeID = null;
@@ -1354,6 +1557,7 @@ public class DriverAssignment {
         DriverAssignment driverAssignment = new DriverAssignment(50);
         driverAssignment.selectMenuItem();
     }
+
 }
 // Driver Assignment
 // o Manage a stack or queue of available drivers.
