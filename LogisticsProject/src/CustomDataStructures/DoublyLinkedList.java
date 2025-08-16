@@ -139,4 +139,12 @@ public class DoublyLinkedList<E> extends SinglyLinkedList<E> {
             System.out.println("Empty list");
         }
     }
+    public NodeElements<E> setElement(int i, E element) {
+        if (i < 0 || i >= size) {
+            throw new IndexOutOfBoundsException("Index out of bounds: " + i);
+        }
+        NodeElements<E> node = getNodeAt(i);
+        node.data = element;
+        return node;
+    }
 }
