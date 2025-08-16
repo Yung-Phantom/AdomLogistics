@@ -126,4 +126,12 @@ public class SinglyLinkedList<E> {
     public E getElement(int i){
         return getNodeAt(i).data;
     }
+    public int indexOf(String element) {
+    for (int i = 0; i < size(); i++) {
+        if (getElement(i).equals(element)) {
+            return i;
+        }
+    }
+    return -1; // return -1 if element not found
+}
 }

@@ -581,10 +581,10 @@ public class DriverAssignment {
         String lastDriverID = null;
         String vehicleReg = null;
 
-        // Step 1: Check driverDetails for the last updated driver
+        // Step 1: Get last updated driver ID
         try (BufferedReader reader = new BufferedReader(new FileReader(driverDetailsFile))) {
-            String line;
             StringBuilder content = new StringBuilder();
+            String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
             }
@@ -614,14 +614,11 @@ public class DriverAssignment {
         try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorageFile))) {
             String line;
             boolean insideEntry = false;
-            boolean matchFound = false;
-
             DoublyLinkedList<String> entryLines = new DoublyLinkedList<>();
 
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
 
-                // Detect start of entry block
                 if (!insideEntry && trimmed.startsWith("\"Entry")) {
                     insideEntry = true;
                     entryLines.clear();
@@ -632,7 +629,6 @@ public class DriverAssignment {
                 if (insideEntry) {
                     entryLines.insertBack(trimmed);
 
-                    // Detect end of entry block
                     if (trimmed.equals("]") || trimmed.equals("],")) {
                         String foundDriverID = null;
                         String foundReg = null;
@@ -657,7 +653,6 @@ public class DriverAssignment {
 
                         if (foundDriverID != null && foundDriverID.equalsIgnoreCase(lastDriverID)) {
                             vehicleReg = foundReg;
-                            matchFound = true;
                             break;
                         }
 
@@ -676,7 +671,7 @@ public class DriverAssignment {
             return;
         }
 
-        // Step 3: Load packageDetails.txt and update all packages
+        // Step 3: Load and update one block
         try {
             DoublyLinkedList<String> allLines = new DoublyLinkedList<>();
             try (BufferedReader reader = new BufferedReader(new FileReader(packageDetailsFile))) {
@@ -686,19 +681,30 @@ public class DriverAssignment {
                 }
             }
 
-            for (int i = 0; i < allLines.size(); i++) {
-                String line = allLines.getElement(i);
+            CustomArrayList<String> block = findFirstMatchingBlock(allLines, "Pending", null);
+            if (block == null) {
+                System.out.println("No pending package found to assign.");
+                return;
+            }
 
-                if (line.startsWith("Entry")) {
-                    allLines.removeAt(i);
-                    allLines.addAt(++i, "Assigned to: " + lastDriverID);
-                    allLines.addAt(++i, "Vehicle Registration: " + vehicleReg);
-                    allLines.addAt(++i, "Status: In Transit");
-                    allLines.addAt(++i, "--------------------------------------------------");
+            for (int i = 0; i < block.size(); i++) {
+                String line = block.getElement(i).trim();
+
+                if (line.startsWith("Assigned to:")) {
+                    block.setElement(i, "Assigned to: " + lastDriverID);
+                } else if (line.startsWith("Vehicle Registration:")) {
+                    block.setElement(i, "Vehicle Registration: " + vehicleReg);
+                } else if (line.startsWith("Status:")) {
+                    block.setElement(i, "Status: In Transit");
                 }
             }
 
-            // Write changes back to file
+            // Replace block in allLines
+            int startIndex = allLines.indexOf(block.getElement(0));
+            for (int i = 0; i < block.size(); i++) {
+                allLines.addAt(startIndex + i, block.getElement(i));
+            }
+
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetailsFile))) {
                 for (int i = 0; i < allLines.size(); i++) {
                     writer.write(allLines.getElement(i));
@@ -706,7 +712,7 @@ public class DriverAssignment {
                 }
             }
 
-            System.out.println("All packages updated successfully (assigned to driver: " + lastDriverID + ").");
+            System.out.println("Package updated to 'In Transit' for driver ID: " + lastDriverID);
 
         } catch (IOException e) {
             System.out.println("Error processing packageDetails.txt: " + e.getMessage());
@@ -717,58 +723,33 @@ public class DriverAssignment {
         File packageDetailsFile = new File("LogisticsProject/src/TXTDatabase/packageDetails.txt").getAbsoluteFile();
 
         try {
-            CustomArrayList<String> allLines = new CustomArrayList<>();
+            DoublyLinkedList<String> allLines = new DoublyLinkedList<>();
             try (BufferedReader reader = new BufferedReader(new FileReader(packageDetailsFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    allLines.addElement(line);
+                    allLines.insertBack(line);
                 }
             }
 
-            int entryStart = -1;
-            int entryEnd = -1;
-            boolean foundFirst = false;
-
-            for (int i = 0; i < allLines.size(); i++) {
-                String line = allLines.getElement(i).trim();
-
-                if (!foundFirst && line.startsWith("Entry")) {
-                    entryStart = i;
-                    foundFirst = true;
-                }
-
-                if (foundFirst && line.startsWith("--------------------------------------------------")) {
-                    entryEnd = i;
-                    break;
-                }
-            }
-
-            if (entryStart == -1 || entryEnd == -1) {
-                System.out.println("No valid package entry found.");
-                return;
-            }
-
-            boolean updated = false;
-            String assignedDriverID = null;
-            for (int i = entryStart; i < entryEnd; i++) {
-                String line = allLines.getElement(i);
-
-                if (line.startsWith("Assigned to:")) {
-                    assignedDriverID = line.substring(13).trim();
-                }
-
-                if (line.startsWith("Status: In Transit") && assignedDriverID.equals(driverID)) {
-                    allLines.setElement(i, "Status: Delivered");
-                    updated = true;
-                }
-            }
-
-            if (!updated) {
+            CustomArrayList<String> block = findFirstMatchingBlock(allLines, "In Transit", driverID);
+            if (block == null) {
                 System.out.println("No package found with status 'In Transit' assigned to driver ID: " + driverID);
                 return;
             }
 
-            // Write changes back to file
+            for (int i = 0; i < block.size(); i++) {
+                String line = block.getElement(i).trim();
+                if (line.startsWith("Status:")) {
+                    block.setElement(i, "Status: Delivered");
+                    break;
+                }
+            }
+
+            int startIndex = allLines.indexOf(block.getElement(0));
+            for (int i = 0; i < block.size(); i++) {
+                allLines.addAt(startIndex + i, block.getElement(i));
+            }
+
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetailsFile))) {
                 for (int i = 0; i < allLines.size(); i++) {
                     writer.write(allLines.getElement(i));
@@ -784,6 +765,49 @@ public class DriverAssignment {
     }
     // Helper: check if driverID exists in driverDetails.txt (supports a few common
     // formats)
+
+    public CustomArrayList<String> findFirstMatchingBlock(DoublyLinkedList<String> lines, String status,
+            String driverID) {
+        CustomArrayList<String> block = new CustomArrayList<>();
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.getElement(i).trim();
+
+            if (line.startsWith("Entry")) {
+                block.clear();
+                block.addElement(lines.getElement(i)); // preserve original line
+                boolean statusMatch = false;
+                boolean driverMatch = (driverID == null);
+                String foundDriverID = null;
+
+                for (int j = i + 1; j < lines.size(); j++) {
+                    String current = lines.getElement(j);
+                    block.addElement(current);
+
+                    if (current.trim().startsWith("Status:") && current.contains(status)) {
+                        statusMatch = true;
+                    }
+
+                    if (current.trim().startsWith("Assigned to:")) {
+                        foundDriverID = current.trim().substring(13).trim();
+                        if (driverID != null && foundDriverID.equals(driverID)) {
+                            driverMatch = true;
+                        }
+                    }
+
+                    if (current.trim().startsWith("--------------------------------------------------")) {
+                        if (statusMatch && driverMatch) {
+                            return block;
+                        } else {
+                            break; // move to next block
+                        }
+                    }
+                }
+            }
+        }
+
+        return null; // no match found
+    }
 
     /**
      * Checks if a driver ID exists in driverDetails.txt (supports several formats).
