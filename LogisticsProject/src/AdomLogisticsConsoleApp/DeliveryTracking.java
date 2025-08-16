@@ -125,7 +125,7 @@ public class DeliveryTracking {
                         entryLines.addElement(line);
 
                         // On delimiter, evaluate and collect match
-                        if (line.trim().equals("-----")) {
+                        if (line.trim().equals("--------------------------------------------------")) {
                             String matchedFieldValue = null;
 
                             // Find the field value in this block
@@ -155,7 +155,7 @@ public class DeliveryTracking {
                     }
                 }
 
-                // Handle a final block if the file doesn't end with "-----"
+                // Handle a final block if the file doesn't end with "--------------------------------------------------"
                 if (insideEntry && entryLines.size() > 0) {
                     String matchedFieldValue = null;
                     for (int i = 0; i < entryLines.size(); i++) {
@@ -264,7 +264,7 @@ public class DeliveryTracking {
                 }
 
                 // End of block delimiter
-                if (trimmed.equals("-----")) {
+                if (trimmed.equals("--------------------------------------------------")) {
                     if (shouldPrint) {
                         // Iterate by index since CustomArrayList isn't iterable
                         for (int i = 0; i < entryBuffer.size(); i++) {
@@ -277,7 +277,7 @@ public class DeliveryTracking {
                 }
             }
 
-            // Handle case where file doesn't end with "-----"
+            // Handle case where file doesn't end with "--------------------------------------------------"
             if (shouldPrint && entryBuffer.size() > 0) {
                 for (int i = 0; i < entryBuffer.size(); i++) {
                     System.out.println(entryBuffer.getElement(i));
@@ -440,7 +440,7 @@ public class DeliveryTracking {
                     status = "";
                 }
 
-                if (t.startsWith("-----")) {
+                if (t.startsWith("--------------------------------------------------")) {
                     if (idMatch && !status.equalsIgnoreCase("Deleted")) {
                         return true;
                     }
