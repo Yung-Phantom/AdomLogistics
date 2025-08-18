@@ -188,6 +188,7 @@ public class VehicleDataBase {
             newEntry.append("          \"driverID\": \"").append(vehicleDetails.getElement(4)).append("\",\n");
             newEntry.append("          \"maintenanceHistory\": \"").append(vehicleDetails.getElement(5))
                     .append("\",\n");
+            newEntry.append("          \"maintenanceSchedule\": \"").append("null").append("\",\n"); // added this line
             newEntry.append("          \"status\": \"").append("!Deleted").append("\"\n");
             newEntry.append("        }\n");
             newEntry.append("      ]\n");
