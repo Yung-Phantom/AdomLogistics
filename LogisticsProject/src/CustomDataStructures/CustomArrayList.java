@@ -68,4 +68,8 @@ public class CustomArrayList<T> {
         ArrayInput = (T[]) new Object[1]; // Reset the array to a new array of size 1
         size = 0; // Reset the size to 0
     }
+
+    public boolean isEmpty() {
+        return size == 0; // Check if the size is 0
+    }
 }
