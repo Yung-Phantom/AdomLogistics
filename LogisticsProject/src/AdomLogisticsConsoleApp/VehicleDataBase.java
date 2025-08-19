@@ -1,1059 +1,537 @@
 package AdomLogisticsConsoleApp;
 
-import CustomDataStructures.CustomArrayList;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
+import AdomLogisticsConsoleApp.ObjectClass.InputValidity;
+import AdomLogisticsConsoleApp.ObjectClass.TextEntryManager;
+import AdomLogisticsConsoleApp.ObjectClass.TxtEntry;
+import CustomDataStructures.CustomArrayList;
+
 public class VehicleDataBase {
+    /**
+     * Banner elements for the main menu.
+     */
+    private final BannerElements bElements;
+    /**
+     * Banner elements for adding a new vehicle.
+     */
+    private final BannerElements addVehicle;
+    /**
+     * Banner elements for searching for vehicles.
+     */
+    private final BannerElements searchBy;
+    /**
+     * Banner elements for searching for vehicles by type.
+     */
+    private final BannerElements searchByType;
 
-    BannerElements bElements;
-    BannerElements addVehicle;
-    CustomArrayList<Object> addVehicleDetails;
-    CustomArrayList<Object> addNewEntry;
-    CustomArrayList<Object> results;
-    BannerElements searchBy;
-    BannerElements searchByType;
+    /**
+     * A scanner for reading user input.
+     */
+    private final Scanner scanner = new Scanner(System.in);
+    /**
+     * The directory where the text storage file is located.
+     */
+    private final File txtStorageDir;
+    /**
+     * The text storage file.
+     */
+    private final File txtStorage;
 
-    Scanner scanner = new Scanner(System.in);
-    boolean trueFalse;
-    int userInput;
-    String userStringInput;
-    double userDoubleInput;
-    File jsonStorageDir;
-    File jsonStorage;
+    /**
+     * A text entry manager for adding new vehicles.
+     */
+    TextEntryManager textEntryManager;
+    /**
+     * A class for validating user input.
+     */
+    InputValidity iv = new InputValidity();
+    /**
+     * User's string input.
+     */
+    private String userStringInput;
+    /**
+     * Low end of a range for numerical input.
+     */
+    private double low;
+    /**
+     * High end of a range for numerical input.
+     */
+    private double high;
 
     public VehicleDataBase(int width) {
         bElements = new BannerElements(width, "Adom Logistics Vehicle Database");
         bElements.printBanner();
-        bElements.addToMenu("Add new vehicle");
+
+        bElements.addToMenu("Add vehicle");
         bElements.addToMenu("Remove vehicle");
         bElements.addToMenu("Search for vehicle");
         bElements.addToMenu("Exit");
         bElements.printMenu();
 
-        addVehicle = new BannerElements(userInput, "Add new vehicle");
+        addVehicle = new BannerElements(width, "Add vehicle");
+        addVehicle.addToMenu("Please enter the driver ID.");
         addVehicle.addToMenu("Please enter the registration number.");
         addVehicle.addToMenu("Please enter the type of vehicle (e.g., Truck, Van).");
         addVehicle.addToMenu("Please enter the mileage of the vehicle.");
         addVehicle.addToMenu("Please enter the fuel usage of the vehicle.");
-        addVehicle.addToMenu("Please enter the driver ID.");
-        addVehicle.addToMenu("Please enter the maintenance history of the vehicle.");
 
-        searchBy = new BannerElements(userInput, "Search for vehicles");
+        searchBy = new BannerElements(width, "Search for vehicles");
+        searchBy.addToMenu("Search for vehicle by driver ID");
         searchBy.addToMenu("Search by registration number");
         searchBy.addToMenu("Search for vehicle by type");
         searchBy.addToMenu("Search for vehicle by mileage");
         searchBy.addToMenu("Search for vehicle by fuel usage");
-        searchBy.addToMenu("Search for vehicle by driver ID");
         searchBy.addToMenu("Search for vehicle by maintenance history");
         searchBy.addToMenu("Exit");
 
-        searchByType = new BannerElements(userInput, "Search for vehicles by type");
+        searchByType = new BannerElements(width, "Search for vehicles by type");
         searchByType.addToMenu("Search for truck");
         searchByType.addToMenu("Search for vans");
         searchByType.addToMenu("Exit");
-    }
 
-    public void addVehicle() {
-        addVehicleDetails = new CustomArrayList<>();
-        addNewEntry = new CustomArrayList<>();
-        for (int i = 0; i < addVehicle.size(); i++) {
-            System.out.println(addVehicle.getElement(i));
-            switch (i) {
-                case 0:
-                case 4:
-                case 5:
-                    // For 0 (reg no) and 4 (driver ID), we’ll handle differently below
-                    // For 5 (maintenance), we’ll use nextLine() to allow spaces
-                    break;
-                case 1:
-                    scanner.nextLine();
-                    while (true) {
-                        userStringInput = scanner.nextLine().trim();
-                        if (userStringInput.equalsIgnoreCase("truck") || userStringInput.equalsIgnoreCase("van")) {
-                            addVehicleDetails.addElement(userStringInput);
-                            break;
-                        } else {
-                            System.out.println("Invalid input. Please enter either 'truck' or 'van'.");
-                        }
-                    }
-                    break;
-                case 2:
-                case 3:
-                    userDoubleInput = scanner.nextDouble();
-                    addVehicleDetails.addElement(userDoubleInput);
-                    break;
-                default:
-                    break;
-            }
-
-            // Handle the fields that need special care after the switch to minimize
-            // disruption
-            if (i == 0) { // registration number (token OK)
-                scanner.nextLine(); // clear buffer
-                userStringInput = scanner.next().trim();
-                addVehicleDetails.addElement(userStringInput);
-            } else if (i == 4) { // driver ID with validation loop
-                scanner.nextLine(); // clear buffer after doubles/types
-                while (true) {
-                    userStringInput = scanner.next().trim();
-                    if (doesDriverExist(userStringInput)) {
-                        addVehicleDetails.addElement(userStringInput);
-                        break;
-                    } else {
-                        System.out.println("Driver ID \"" + userStringInput + "\" not found. Enter a valid driver ID:");
-                    }
-                }
-            } else if (i == 5) { // maintenance history (allow spaces)
-                scanner.nextLine(); // clear buffer
-                userStringInput = scanner.nextLine().trim();
-                addVehicleDetails.addElement(userStringInput);
-            }
-        }
-
-        System.out.println("Operation successful");
-        for (int index = 0; index < addVehicleDetails.size(); index++) {
-            if (index == 0) {
-                addNewEntry.addElement("Registration number: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            } else if (index == 1) {
-                addNewEntry.addElement("Vehicle type: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            } else if (index == 2) {
-                addNewEntry.addElement("Vehicle milage: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            } else if (index == 3) {
-                addNewEntry.addElement("Vehicle fuel usage: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            } else if (index == 4) {
-                addNewEntry.addElement("Driver ID: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            } else if (index == 5) {
-                addNewEntry.addElement("Vehicle maintenance history: " + addVehicleDetails.getElement(index));
-                System.out.println(addNewEntry.getElement(index));
-            }
-        }
-        saveJSON(addVehicleDetails);
-    }
-
-    public void saveJSON(CustomArrayList<Object> vehicleDetails) {
-        // Ensure the JSON storage directory exists
-        jsonStorageDir = new File("LogisticsProject/src/JSONDatabase").getAbsoluteFile();
-        if (!jsonStorageDir.exists()) {
-            jsonStorageDir.mkdirs();
-        }
-
-        // Use a relative path for the JSON storage file
-        jsonStorage = new File(
-                "LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile(); // Changed to relative path
-        StringBuilder fileContent = new StringBuilder();
-        int entryCount = 1;
-
-        // check if file exists
+        txtStorageDir = new File("LogisticsProject/src/finalTxtDatabase");
+        txtStorage = new File("LogisticsProject/src/finalTxtDatabase/vehicles.txt");
         try {
-            if (!jsonStorage.exists()) {
-                jsonStorage.createNewFile();
-            } else {
-                try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        fileContent.append(line);
-                    }
-
-                    // count existing entries
-                    String content = fileContent.toString();
-                    int index = 0;
-                    while ((index = content.indexOf("\"Entry", index)) != -1) {
-                        entryCount++;
-                        index = index + 6;
-                    }
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage());
+            if (!txtStorageDir.exists() || !txtStorage.exists()) {
+                txtStorageDir.mkdirs();
+                if (!txtStorage.exists()) {
+                    txtStorage.createNewFile();
                 }
-            }
-            // build new entry
-            StringBuilder newEntry = new StringBuilder();
-            newEntry.append("    {\n");
-            newEntry.append("      \"Entry ").append(String.format("%03d", entryCount)).append("\": [\n");
-            newEntry.append("        {\n");
-            newEntry.append("          \"registrationNumber\": \"").append(vehicleDetails.getElement(0))
-                    .append("\",\n");
-            newEntry.append("          \"vehicleType\": \"").append(vehicleDetails.getElement(1)).append("\",\n");
-            newEntry.append("          \"mileage\": ").append(vehicleDetails.getElement(2)).append(",\n");
-            newEntry.append("          \"fuelUsage\": ").append(vehicleDetails.getElement(3)).append(",\n");
-            newEntry.append("          \"driverID\": \"").append(vehicleDetails.getElement(4)).append("\",\n");
-            newEntry.append("          \"maintenanceHistory\": \"").append(vehicleDetails.getElement(5))
-                    .append("\",\n");
-            newEntry.append("          \"maintenanceSchedule\": \"").append("null").append("\",\n"); // added this line
-            newEntry.append("          \"status\": \"").append("!Deleted").append("\"\n");
-            newEntry.append("        }\n");
-            newEntry.append("      ]\n");
-            newEntry.append("    }");
-            // Final JSON structure
-            StringBuilder finalJSON = new StringBuilder();
-            finalJSON.append("{\n");
-            finalJSON.append("  \"Adom Logistics\": [\n");
-
-            // If previous content exists, inject it
-            if (fileContent.length() > 0) {
-                int insertIndex = fileContent.lastIndexOf("]");
-                String existingEntries = fileContent.substring(fileContent.indexOf("[") + 1, insertIndex).trim();
-                if (!existingEntries.isEmpty()) {
-                    finalJSON.append(existingEntries).append(",\n");
-                }
-            }
-
-            finalJSON.append(newEntry).append("\n");
-            finalJSON.append("  ]\n");
-            finalJSON.append("}");
-
-            // Write to file (overwrite)
-            try (FileWriter writer = new FileWriter(jsonStorage)) {
-                writer.write(finalJSON.toString());
-                System.out.println("Entry " + entryCount + " saved successfully.");
-            } catch (IOException e) {
-                System.out.println("Error writing to file: " + e.getMessage());
             }
         } catch (Exception e) {
             System.out.println("Error creating file: " + e.getMessage());
         }
+
+        textEntryManager = new TextEntryManager(txtStorageDir.getPath(), txtStorage.getPath(), "Entry ");
     }
 
-    public void removeVehicle() {
-        CustomArrayList<Object> searchResults = searchVehicleString("registrationNumber");
-
-        if (searchResults.size() > 1) {
-            CustomArrayList<Object> typeResults = searchVehicleType();
-            CustomArrayList<Object> temp = new CustomArrayList<>();
-
-            for (int i = 0; i < searchResults.size(); i++) {
-                Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                for (int j = 0; j < typeResults.size(); j++) {
-                    Object candidate = typeResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
-                    }
-                }
-            }
-            searchResults = temp;
-        }
-
-        if (searchResults.size() > 1) {
-            CustomArrayList<Object> driverResults = searchVehicleString("driverID");
-            CustomArrayList<Object> temp = new CustomArrayList<>();
-
-            for (int i = 0; i < searchResults.size(); i++) {
-                Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                for (int j = 0; j < driverResults.size(); j++) {
-                    Object candidate = driverResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
-                    }
-                }
-            }
-            searchResults = temp;
-        }
-
-        if (searchResults.size() == 1) {
-            Object entryObj = searchResults.getElement(0);
-            if (entryObj instanceof CustomArrayList) {
-                CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                String header = entry.getElement(0).toString();
-                String entryNumber = header.replace("Entry ", "").trim();
-                updateJson(entryNumber);
-            } else {
-                System.out.println("Unexpected result format.");
-            }
-        } else if (searchResults.size() == 0) {
-            System.out.println("No matching vehicle found.");
-        } else {
-            System.out.println("Multiple entries still match. Refining search...");
-
-            // Step 1: maintenanceHistory
-            CustomArrayList<Object> maintenanceResults = searchVehicleString("maintenanceHistory");
-            CustomArrayList<Object> temp = new CustomArrayList<>();
-            for (int i = 0; i < searchResults.size(); i++) {
-                Object entry = searchResults.getElement(i);
-                if (!(entry instanceof CustomArrayList))
-                    continue;
-                String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                for (int j = 0; j < maintenanceResults.size(); j++) {
-                    Object candidate = maintenanceResults.getElement(j);
-                    if (!(candidate instanceof CustomArrayList))
-                        continue;
-                    String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                    if (entryHeader.equals(candidateHeader)) {
-                        temp.addElement(entry);
-                        break;
-                    }
-                }
-            }
-            searchResults = temp;
-
-            // Step 2: mileage
-            if (searchResults.size() > 1) {
-                CustomArrayList<Object> mileageResults = searchVehicleDoubleRange("mileage");
-                temp = new CustomArrayList<>();
-                for (int i = 0; i < searchResults.size(); i++) {
-                    Object entry = searchResults.getElement(i);
-                    if (!(entry instanceof CustomArrayList))
-                        continue;
-                    String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                    for (int j = 0; j < mileageResults.size(); j++) {
-                        Object candidate = mileageResults.getElement(j);
-                        if (!(candidate instanceof CustomArrayList))
-                            continue;
-                        String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                        if (entryHeader.equals(candidateHeader)) {
-                            temp.addElement(entry);
-                            break;
-                        }
-                    }
-                }
-                searchResults = temp;
-            }
-
-            // Step 3: fuelUsage
-            if (searchResults.size() > 1) {
-                CustomArrayList<Object> fuelResults = searchVehicleDoubleRange("fuelUsage");
-                temp = new CustomArrayList<>();
-                for (int i = 0; i < searchResults.size(); i++) {
-                    Object entry = searchResults.getElement(i);
-                    if (!(entry instanceof CustomArrayList))
-                        continue;
-                    String entryHeader = ((CustomArrayList<?>) entry).getElement(0).toString().trim();
-
-                    for (int j = 0; j < fuelResults.size(); j++) {
-                        Object candidate = fuelResults.getElement(j);
-                        if (!(candidate instanceof CustomArrayList))
-                            continue;
-                        String candidateHeader = ((CustomArrayList<?>) candidate).getElement(0).toString().trim();
-
-                        if (entryHeader.equals(candidateHeader)) {
-                            temp.addElement(entry);
-                            break;
-                        }
-                    }
-                }
-                searchResults = temp;
-            }
-
-            // Final check
-            if (searchResults.size() == 1) {
-                Object entryObj = searchResults.getElement(0);
-                if (entryObj instanceof CustomArrayList) {
-                    CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                    String header = entry.getElement(0).toString();
-                    String entryNumber = header.replace("Entry ", "").trim();
-                    updateJson(entryNumber);
-                } else {
-                    System.out.println("Unexpected result format.");
-                }
-            } else if (searchResults.size() == 0) {
-                System.out.println("No matching vehicle found after refinement.");
-            } else {
-                System.out.println("Still multiple entries. Manual review may be required.");
-            }
-        }
-    }
-
-    public void updateJson(String uniqueIdentifier) {
-        // Ensure the JSON storage directory exists
-        jsonStorageDir = new File("LogisticsProject/src/JSONDatabase").getAbsoluteFile();
-        if (!jsonStorageDir.exists()) {
-            jsonStorageDir.mkdirs();
-        }
-
-        jsonStorage = new File(
-                "LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-        StringBuilder fileContent = new StringBuilder();
-
-        try {
-            try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    fileContent.append(line).append("\n");
-                }
-            } catch (Exception e) {
-                System.out.println("Error reading file: " + e.getMessage());
-                return;
-            }
-
-            String content = fileContent.toString();
-            int entryIndex = content.indexOf(uniqueIdentifier);
-            if (entryIndex != -1) {
-                int statusIndex = content.indexOf("\"status\": \"!Deleted\"", entryIndex);
-                if (statusIndex != -1) {
-                    scanner = new Scanner(System.in);
-                    System.out.print("Confirm remove for " + uniqueIdentifier + "? (yes/no): ");
-                    String response = scanner.nextLine().trim().toLowerCase();
-                    if (!response.equals("yes")) {
-                        System.out.println("Remove cancelled.");
-                        return;
-                    }
-
-                    content = content.substring(0, statusIndex) + "\"status\": \"Deleted\""
-                            + content.substring(statusIndex + "\"status\": \"!Deleted\"".length());
-                    try (FileWriter writer = new FileWriter(jsonStorage)) {
-                        writer.write(content);
-                        System.out.println("File updated successfully for" + uniqueIdentifier + ".");
-                    } catch (IOException e) {
-                        System.out.println("Error writing to file: " + e.getMessage());
-                    }
-                } else {
-                    System.out.println("Status field not found near the identifier");
-                }
-            } else {
-                System.out.println("Entry not found for " + uniqueIdentifier + ".");
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error rewriting file: " + e.getMessage());
-        }
-    }
-
-    public void searchVehicle() {
-        // Logic to search for a vehicle
-        // String searchBy
-        // String searchBy, String value
-        // String searchBy, double value
-
-        searchBy.printMenu();
-        validity(scanner, searchBy.size());
-        boolean choice = trueFalse;
-        int choiceInput = userInput;
-        if (choice) {
-            switch (choiceInput) {
-                case 0:
-                    searchBy.printMenu();
-                    selectMenuItem();
-                    break;
-                case 1:
-                    System.out.println("Please enter the registration number.");
-                    searchVehicleString("registrationNumber");
-                    break;
-                case 2:
-                    searchVehicleType();
-                    break;
-                case 3:
-                    System.out.println("Please enter the milage as a range. Example: 1000-2000");
-                    searchVehicleDoubleRange("mileage");
-                    break;
-                case 4:
-                    System.out.println("Please enter the fuel usage as a range. Example: 10-20");
-                    searchVehicleDoubleRange("fuelUsage");
-                    break;
-                case 5:
-                    System.out.println("Please enter the driver ID.");
-                    searchVehicleString("driverID");
-                    break;
-                case 6:
-                    System.out.println("Please enter the maintenance history.");
-                    searchVehicleString("maintenanceHistory");
-                    break;
-                case 7:
-                    System.out.println("Exiting Adom Logistics System. Goodbye!");
-                    scanner.close();
-                    break;
-            }
-        }
-    }
-
-    public boolean doesDriverExist(String driverID) {
-        // Use the TXTDatabase path where saveTXT writes driverDetails.txt
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
-
-        if (!detailsFile.exists()) {
-            System.out.println("Driver details file not found: " + detailsFile.getAbsolutePath());
-            return false;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
-            String line;
-            boolean insideEntry = false;
-            boolean idMatch = false;
-            String status = "Active"; // default
-
-            while ((line = reader.readLine()) != null) {
-                String t = line.trim();
-                if (t.isEmpty())
-                    continue;
-
-                // Entry start (e.g., "Entry 001")
-                if (t.startsWith("Entry ")) {
-                    // reset for new block
-                    insideEntry = true;
-                    idMatch = false;
-                    status = "Active";
-                    continue;
-                }
-
-                if (!insideEntry)
-                    continue;
-
-                // Capture Driver ID
-                if (t.startsWith("Driver ID:")) {
-                    String id = t.substring("Driver ID:".length()).trim();
-                    idMatch = id.equalsIgnoreCase(driverID);
-                    continue;
-                }
-
-                // Capture Status and treat it as end-of-entry signal
-                if (t.startsWith("Status:")) {
-                    status = t.substring("Status:".length()).trim();
-                    // Decide for this entry
-                    if (idMatch && !status.equalsIgnoreCase("Deleted")) {
-                        return true;
-                    }
-                    // Move to next entry
-                    insideEntry = false;
-                    idMatch = false;
-                    status = "Active";
-                    continue;
-                }
-
-                // Fence line can also end an entry block
-                if (t.startsWith("-----")) {
-                    if (idMatch && !status.equalsIgnoreCase("Deleted")) {
-                        return true;
-                    }
-                    insideEntry = false;
-                    idMatch = false;
-                    status = "Active";
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
-        }
-
-        return false; // no active entry with this ID
-    }
-
-    public CustomArrayList<Object> searchVehicleString(String searchString) {
-        System.out.println("Enter :" + searchString);
-        validityString(scanner); // validates input and sets trueFalse + userStringInput
-        boolean choice = trueFalse;
-        String userSearchInputString = userStringInput == null ? "" : userStringInput.trim();
-
-        CustomArrayList<Object> results = new CustomArrayList<>();
-
-        if (choice) {
-            // If we're searching by driverID, validate against driverDetails.txt first
-            if ("driverID".equalsIgnoreCase(searchString)) {
-                if (!doesDriverExist(userSearchInputString)) {
-                    System.out.println(
-                            "Driver ID \"" + userSearchInputString + "\" does not exist in driverDetails.txt. " +
-                                    "Please add the driver or enter a valid ID.");
-                    return results; // empty
-                }
-            }
-
-            System.out.println(
-                    "Searching for vehicles with " + searchString + " matching \"" + userSearchInputString + "\"");
-
-            jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-
-            try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-                String line;
-                boolean insideEntry = false;
-                String currentEntryNumber = null;
-                CustomArrayList<String> entryLines = new CustomArrayList<>();
-
-                while ((line = reader.readLine()) != null) {
-                    String trimmedLine = line.trim();
-
-                    // Detect entry start
-                    if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
-                        int start = trimmedLine.indexOf("Entry") + 6;
-                        int end = trimmedLine.indexOf("\"", start);
-                        currentEntryNumber = trimmedLine.substring(start, end);
-                        insideEntry = true;
-                        entryLines.clear();
-                        entryLines.addElement(trimmedLine);
-                        continue;
-                    }
-
-                    if (insideEntry) {
-                        entryLines.addElement(trimmedLine);
-
-                        // Detect end of entry block
-                        if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
-                            String matchedFieldValue = null;
-                            boolean isDeleted = false;
-
-                            for (int i = 0; i < entryLines.size(); i++) {
-                                String e = entryLines.getElement(i).trim();
-
-                                int q1 = e.indexOf("\"");
-                                int q2 = e.indexOf("\"", q1 + 1);
-                                if (q1 != -1 && q2 != -1) {
-                                    String fieldName = e.substring(q1 + 1, q2);
-
-                                    // Check status
-                                    if (fieldName.equals("status")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawStatus = e.substring(colonIndex + 1).trim();
-                                            if (rawStatus.endsWith(",")) {
-                                                rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                                rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                                isDeleted = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    // Check target field
-                                    if (fieldName.equals(searchString)) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawValue = e.substring(colonIndex + 1).trim();
-                                            if (rawValue.endsWith(",")) {
-                                                rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                            }
-                                            if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                                rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                            }
-                                            matchedFieldValue = rawValue;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (!isDeleted && matchedFieldValue != null &&
-                                    matchedFieldValue.equalsIgnoreCase(userSearchInputString)) {
-                                CustomArrayList<String> oneEntry = new CustomArrayList<>();
-                                oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
-                                for (int i = 0; i < entryLines.size(); i++) {
-                                    oneEntry.addElement(entryLines.getElement(i));
-                                }
-                                results.addElement(oneEntry);
-                            }
-
-                            insideEntry = false;
-                            currentEntryNumber = null;
-                            entryLines.clear();
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                System.out.println("Error reading JSON database: " + e.getMessage());
-            }
-        }
-
-        // Display concise confirmation of matches found
-        for (int index = 0; index < results.size(); index++) {
-            Object entryObj = results.getElement(index);
-
-            if (entryObj instanceof CustomArrayList) {
-                CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                String header = entry.getElement(0).toString(); // "Entry 001"
-                String entryNumber = header.replace("Entry ", "").trim();
-                System.out.println("Entry number found: " + entryNumber);
-            } else {
-                System.out.println(entryObj); // fallback
-            }
-        }
-
-        return results;
-    }
-
-    // Logic to search for a vehicle by type
-    public CustomArrayList<Object> searchVehicleType() {
-        searchByType.printMenu();
-        validity(scanner, searchByType.size()); // Assume this validates input
-        boolean choice = trueFalse;
-        int choiceInput = userInput;
-
-        CustomArrayList<Object> results = new CustomArrayList<>();
-
-        if (choice) {
-            String targetType = null;
-
-            switch (choiceInput) {
-                case 0:
-                    System.out.println("Searching for all vehicle types...");
-                    break;
-                case 1:
-                    System.out.println("Searching for trucks...");
-                    targetType = "truck";
-                    break;
-                case 2:
-                    System.out.println("Searching for vans...");
-                    targetType = "van";
-                    break;
-                case 3:
-                    System.out.println("Exiting Adom Logistics System. Goodbye!");
-                    return results;
-            }
-
-            jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-
-            try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-                String line;
-                boolean insideEntry = false;
-                String currentEntryNumber = null;
-                CustomArrayList<String> entryLines = new CustomArrayList<>();
-
-                while ((line = reader.readLine()) != null) {
-                    String trimmedLine = line.trim();
-
-                    // Detect entry start
-                    if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
-                        int start = trimmedLine.indexOf("Entry") + 6;
-                        int end = trimmedLine.indexOf("\"", start);
-                        currentEntryNumber = trimmedLine.substring(start, end);
-                        insideEntry = true;
-                        entryLines.clear();
-                        entryLines.addElement(trimmedLine);
-                        continue;
-                    }
-
-                    if (insideEntry) {
-                        entryLines.addElement(trimmedLine);
-
-                        // Detect end of entry block
-                        if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
-                            String matchedType = null;
-                            boolean isDeleted = false;
-
-                            for (int i = 0; i < entryLines.size(); i++) {
-                                String e = entryLines.getElement(i).trim();
-
-                                int q1 = e.indexOf("\"");
-                                int q2 = e.indexOf("\"", q1 + 1);
-                                if (q1 != -1 && q2 != -1) {
-                                    String fieldName = e.substring(q1 + 1, q2);
-
-                                    // Check status
-                                    if (fieldName.equals("status")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawStatus = e.substring(colonIndex + 1).trim();
-                                            if (rawStatus.endsWith(",")) {
-                                                rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                                rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                            }
-                                            if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                                isDeleted = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    // Check vehicleType
-                                    if (fieldName.equals("vehicleType")) {
-                                        int colonIndex = e.indexOf(":");
-                                        if (colonIndex != -1) {
-                                            String rawValue = e.substring(colonIndex + 1).trim();
-                                            if (rawValue.endsWith(",")) {
-                                                rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                            }
-                                            if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                                rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                            }
-                                            matchedType = rawValue;
-                                        }
-                                    }
-                                }
-                            }
-
-                            boolean match = !isDeleted && (targetType == null ||
-                                    (matchedType != null && matchedType.equalsIgnoreCase(targetType)));
-
-                            if (match) {
-                                CustomArrayList<String> oneEntry = new CustomArrayList<>();
-                                oneEntry.addElement("Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
-                                for (int i = 0; i < entryLines.size(); i++) {
-                                    oneEntry.addElement(entryLines.getElement(i));
-                                }
-                                results.addElement(oneEntry);
-                            }
-
-                            insideEntry = false;
-                            currentEntryNumber = null;
-                            entryLines.clear();
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                System.out.println("Error reading JSON database: " + e.getMessage());
-            }
-        }
-
-        for (int index = 0; index < results.size(); index++) {
-            Object entryObj = results.getElement(index);
-
-            if (entryObj instanceof CustomArrayList) {
-                CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                String header = entry.getElement(0).toString(); // "Entry 001"
-                String entryNumber = header.replace("Entry ", "").trim();
-                System.out.println("Entry number found: " + entryNumber);
-            } else {
-                System.out.println(entryObj); // fallback
-            }
-        }
-
-        return results;
-    }
-
-    public CustomArrayList<Object> searchVehicleDoubleRange(String searchString) {
-        System.out.println("First input");
-        validityDouble(scanner); // Assume this validates input
-        double lowerBound = userDoubleInput;
-
-        System.out.println("Second input");
-        validityDouble(scanner); // Assume this validates input
-        double upperBound = userDoubleInput;
-
-        if (lowerBound > upperBound) {
-            double temp = lowerBound;
-            lowerBound = upperBound;
-            upperBound = temp;
-        }
-
-        System.out.println(
-                "Searching for vehicles with " + searchString + " between " + lowerBound + " and " + upperBound);
-
-        jsonStorage = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
-        CustomArrayList<Object> results = new CustomArrayList<>();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorage))) {
-            String line;
-            boolean insideEntry = false;
-            String currentEntryNumber = null;
-            CustomArrayList<String> entryLines = new CustomArrayList<>();
-
-            while ((line = reader.readLine()) != null) {
-                String trimmedLine = line.trim();
-
-                // Detect entry start
-                if (!insideEntry && trimmedLine.startsWith("\"Entry")) {
-                    int start = trimmedLine.indexOf("Entry") + 6;
-                    int end = trimmedLine.indexOf("\"", start);
-                    currentEntryNumber = trimmedLine.substring(start, end);
-                    insideEntry = true;
-                    entryLines.clear();
-                    entryLines.addElement(trimmedLine);
-                    continue;
-                }
-
-                if (insideEntry) {
-                    entryLines.addElement(trimmedLine);
-
-                    // Detect end of entry block
-                    if (trimmedLine.equals("]") || trimmedLine.equals("],")) {
-                        String matchedFieldValue = null;
-                        boolean isDeleted = false;
-
-                        for (int i = 0; i < entryLines.size(); i++) {
-                            String e = entryLines.getElement(i).trim();
-
-                            int q1 = e.indexOf("\"");
-                            int q2 = e.indexOf("\"", q1 + 1);
-                            if (q1 != -1 && q2 != -1) {
-                                String fieldName = e.substring(q1 + 1, q2);
-
-                                // Check status
-                                if (fieldName.equals("status")) {
-                                    int colonIndex = e.indexOf(":");
-                                    if (colonIndex != -1) {
-                                        String rawStatus = e.substring(colonIndex + 1).trim();
-                                        if (rawStatus.endsWith(",")) {
-                                            rawStatus = rawStatus.substring(0, rawStatus.length() - 1);
-                                        }
-                                        if (rawStatus.startsWith("\"") && rawStatus.endsWith("\"")) {
-                                            rawStatus = rawStatus.substring(1, rawStatus.length() - 1);
-                                        }
-                                        if (rawStatus.equalsIgnoreCase("Deleted")) {
-                                            isDeleted = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                // Check target field
-                                if (fieldName.equals(searchString)) {
-                                    int colonIndex = e.indexOf(":");
-                                    if (colonIndex != -1) {
-                                        String rawValue = e.substring(colonIndex + 1).trim();
-                                        if (rawValue.endsWith(",")) {
-                                            rawValue = rawValue.substring(0, rawValue.length() - 1);
-                                        }
-                                        if (rawValue.startsWith("\"") && rawValue.endsWith("\"")) {
-                                            rawValue = rawValue.substring(1, rawValue.length() - 1);
-                                        }
-                                        matchedFieldValue = rawValue;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!isDeleted && matchedFieldValue != null) {
-                            try {
-                                double value = Double.parseDouble(matchedFieldValue);
-                                if (value >= lowerBound && value <= upperBound) {
-                                    CustomArrayList<String> oneEntry = new CustomArrayList<>();
-                                    oneEntry.addElement(
-                                            "Entry " + (currentEntryNumber == null ? "" : currentEntryNumber));
-                                    for (int i = 0; i < entryLines.size(); i++) {
-                                        oneEntry.addElement(entryLines.getElement(i));
-                                    }
-                                    results.addElement(oneEntry);
-                                }
-                            } catch (NumberFormatException ex) {
-                                // Skip non-numeric values
-                            }
-                        }
-
-                        insideEntry = false;
-                        currentEntryNumber = null;
-                        entryLines.clear();
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading JSON database: " + e.getMessage());
-        }
-
-        for (int index = 0; index < results.size(); index++) {
-            Object entryObj = results.getElement(index);
-
-            if (entryObj instanceof CustomArrayList) {
-                CustomArrayList<?> entry = (CustomArrayList<?>) entryObj;
-                String header = entry.getElement(0).toString(); // "Entry 001"
-                String entryNumber = header.replace("Entry ", "").trim();
-                System.out.println("Entry number found: " + entryNumber);
-            } else {
-                System.out.println(entryObj); // fallback
-            }
-        }
-
-        return results;
-    }
-
-    public void selectMenuItem() {
-        // call the validity method to get the boolean and int that will be used for the
-        validity(scanner, bElements.size());
-        boolean choice = trueFalse;
-        int choiceInput = userInput;
-
-        if (choice) {
-            switch (choiceInput) {
+    /**
+     * Main menu selection logic. Handles user input for menu navigation.
+     * <p>
+     * The user is presented with a menu and can select one of the following options:
+     * <ul>
+     * <li>Add a new vehicle</li>
+     * <li>Remove a vehicle</li>
+     * <li>Search for a vehicle</li>
+     * <li>Exit the program</li>
+     * </ul>
+     * </p>
+     * @throws IOException If the user selects to exit and close the scanner.
+     */
+    public void selectMenuItem() throws IOException {
+        while (true) {
+            int choice = iv.validity(scanner, bElements.size());
+            switch (choice) {
                 case 0:
                     bElements.printMenu();
-                    selectMenuItem();
-                    break;
+                    // Continue to the next iteration of the loop
+                    continue;
                 case 1:
+                    // Add a new vehicle
                     addVehicle();
                     break;
                 case 2:
+                    // Remove a vehicle
                     removeVehicle();
                     break;
                 case 3:
+                    // Search for a vehicle
                     searchVehicle();
                     break;
                 case 4:
+                    // Exit the program
                     System.out.println("Exiting Adom Logistics System. Goodbye!");
                     scanner.close();
-                    break;
-
+                    return;
+                default:
+                    // Handle invalid or unknown input
+                    System.out.println("Unknown selection. Please try again.");
             }
         }
     }
 
-    public void validity(Scanner scanner, int i) {
+    /**
+     * Handle the search vehicle menu option.
+     * <p>
+     * The user is presented with a menu to select a search criteria.
+     * </p>
+     * <p>
+     * After selecting a search criteria, the user is prompted to enter a value for the criteria.
+     * The program will then search for matching vehicles and display the results if found.
+     * </p>
+     */
+    private void searchVehicle() {
         while (true) {
-            System.out.print("Please enter your choice (1 - " + i + "): ");
-            try {
-                userInput = scanner.nextInt();
-                if (userInput >= 0 && userInput <= i) {
-                    trueFalse = true;
+            searchBy.printMenu();
+            int choice = iv.validity(scanner, searchBy.size());
+            if (choice == 0)
+                continue;
+
+            CustomArrayList<Object> results = new CustomArrayList<>();
+
+            switch (choice) {
+                case 1: {
+                    // Search by driver ID
+                    System.out.println(addVehicle.getElement(0));
+                    userStringInput = iv.validityString(scanner);
+                    results = textEntryManager.searchByField("Driver ID", userStringInput);
                     break;
-                } else {
-                    System.out.println("Invalid number. Try again. Enter 0 to view the menu");
                 }
-            } catch (Exception e) {
-                System.out.println("Invalid input. Please enter a number. Enter 0 to view the menu");
-                scanner.nextLine(); // clear the buffer
+                case 2: {
+                    // Search by registration number
+                    System.out.println(addVehicle.getElement(1));
+                    userStringInput = iv.validityString(scanner);
+                    results = textEntryManager.searchByField("Registration Number", userStringInput);
+                    break;
+                }
+                case 3: {
+                    // Search by type
+                    searchByType.printMenu();
+                    System.out.println(addVehicle.getElement(2));
+                    int userChoice = iv.validity(scanner, searchByType.size());
+                    String target = switch (userChoice) {
+                        case 1 -> "truck";
+                        case 2 -> "van";
+                        default -> null;
+                    };
+                    if (target == null) {
+                        System.out.println("Invalid type selection.");
+                        continue;
+                    }
+                    results = textEntryManager.searchByField("Type", target);
+                    break;
+                }
+                case 4: {
+                    // Search by mileage range
+                    System.out.println(addVehicle.getElement(3));
+                    System.out.println("First mileage: ");
+                    low = iv.validityDouble(scanner);
+                    System.out.println("Second mileage: ");
+                    high = iv.validityDouble(scanner);
+                    results = textEntryManager.searchByRange("Mileage", low, high);
+                    break;
+                }
+                case 5: {
+                    // Search by fuel usage range
+                    System.out.println(addVehicle.getElement(4));
+                    System.out.println("First fuel usage amount: ");
+                    low = iv.validityDouble(scanner);
+                    System.out.println("Second fuel usage amount: ");
+                    high = iv.validityDouble(scanner);
+                    results = textEntryManager.searchByRange("Fuel Usage", low, high);
+                    break;
+                }
+                case 6: {
+                    // Search by maintenance history
+                    System.out.println("Please enter the maintenance history to search by.");
+                    userStringInput = iv.validityString(scanner);
+                    if (!"null".equalsIgnoreCase(userStringInput) && !userStringInput.isEmpty()) {
+                        results = textEntryManager.searchByField("Vehicle maintenance history", userStringInput);
+                    }
+                    break;
+                }
+                case 7: {
+                    // Exit
+                    System.out.println("Exiting Adom Logistics Vehicle Database. Goodbye!\n");
+                    return;
+                }
+                default:
+                    System.out.println("Unknown selection. Please try again.");
+                    continue;
+            }
+
+            if (results.isEmpty()) {
+                System.out.println("No matching vehicles found.\n");
+            } else {
+                System.out.println("Matches found: " + results.size() + "\n");
+                textEntryManager.printEntryNumbers(results);
             }
         }
     }
 
-    public void validityDouble(Scanner scanner) {
+    /**
+     * Handles adding a new vehicle.
+     * <p>
+     * The user is prompted to enter the driver ID, registration number, type, mileage, and fuel usage of the vehicle.
+     * </p>
+     * <p>
+     * The user is asked to enter the driver ID first, then the registration number, type, mileage, and fuel usage.
+     * The user is asked to enter the driver ID until a valid one is entered.
+     * The user is asked to enter the registration number until a valid one is entered.
+     * The user is asked to enter the type until a valid one is entered.
+     * The user is asked to enter the mileage until a valid one is entered.
+     * The user is asked to enter the fuel usage until a valid one is entered.
+     * </p>
+     */
+    public void addVehicle() {
+        String driverId;
         while (true) {
-            scanner.nextLine(); // clear the buffer
-            try {
-                userDoubleInput = scanner.nextDouble();
-                if (userDoubleInput >= 0) {
-                    trueFalse = true;
-                    break;
-                } else {
-                    System.out.println("Invalid number. Please enter a positive double.");
-                    // no break here; keep looping
-                }
-            } catch (Exception e) {
-                System.out.println(e + ". Invalid input. Please enter a valid double.");
-                scanner.nextLine(); // clear the buffer and retry
-            }
+            driverId = iv.readNonEmptyLine(scanner, addVehicle.getElement(0));
+            if (doesDriverExist(driverId))
+                break;
+            System.out.println("Driver ID \"" + driverId + "\" not found.");
         }
-    }
-
-    public void validityString(Scanner scanner) {
+        String registrationNumber = iv.readNonEmptyLine(scanner, addVehicle.getElement(1));
+        String type;
         while (true) {
-            scanner.nextLine(); // clear the buffer
-            try {
-                userStringInput = scanner.nextLine();
-                if (userStringInput.length() > 0) {
-                    trueFalse = true;
-                    break;
-                } else {
-                    System.out.println("Invalid input. Please enter a non-empty string.");
-                }
-            } catch (Exception e) {
-                System.out.println(e + ". Invalid input. Please enter a valid string.");
-                scanner.nextLine(); // clear the buffer
+            String raw = iv.readNonEmptyLine(scanner, addVehicle.getElement(2)).toLowerCase();
+            if (raw.equals("truck") || raw.equals("van")) {
+                type = raw;
+                break;
             }
+            System.out.println("Invalid input. Please enter either 'truck' or 'van'.");
+        }
+        double mileage = iv.readPositiveDouble(scanner, addVehicle.getElement(3));
+        double fuel = iv.readPositiveDouble(scanner, addVehicle.getElement(4));
+
+        System.out.println("Operation successful");
+        System.out.println("Driver ID: " + driverId);
+        System.out.println("Registration number: " + registrationNumber);
+        System.out.println("Vehicle type: " + type);
+        System.out.println("Vehicle mileage: " + mileage);
+        System.out.println("Vehicle fuel usage: " + fuel);
+
+        // Save the new vehicle to the text file
+        saveTXT(registrationNumber, type, mileage, fuel, driverId);
+    }
+
+    /**
+     * Persists a new vehicle entry to the text file.
+     * <p>
+     * The method first checks if the entries list exists. If it doesn't, it reads all entries from the file.
+     * Then it generates a unique identifier for the new entry.
+     * It creates a new entry based on the user's input and saves it to the text file.
+     * Finally, it refreshes the entries list from the file and prints a success message.
+     * </p>
+     * <p>
+     * If any exceptions occur during the process, the method catches them, prints the stack trace for debugging,
+     * and prints an error message.
+     * </p>
+     *
+     * @param registrationNumber the vehicle's registration number
+     * @param type the vehicle's type (truck or van)
+     * @param mileage the vehicle's mileage
+     * @param fuel the vehicle's fuel usage
+     * @param driverId the driver's ID
+     */
+    public void saveTXT(String registrationNumber, String type, double mileage, double fuel, String driverId) {
+        try {
+            // Always ensure entries list exists
+            if (textEntryManager.entries == null) {
+                textEntryManager.readAllEntries("Entry ");
+            }
+
+            // Generate a unique identifier for the new entry
+            String entryId = textEntryManager.nextEntryId();
+
+            // Create a new entry based on the user's input
+            TxtEntry entry = new TxtEntry(entryId);
+            entry.rawLines.addElement("Entry " + entryId);
+            entry.rawLines.addElement("Driver ID: " + driverId);
+            entry.rawLines.addElement("Registration Number: " + registrationNumber);
+            entry.rawLines.addElement("Type: " + type);
+            entry.rawLines.addElement("Mileage: " + mileage);
+            entry.rawLines.addElement("Fuel Usage: " + fuel);
+            entry.rawLines.addElement("Vehicle maintenance history: null");
+            entry.rawLines.addElement("Maintenance schedule: null");
+            entry.rawLines.addElement("Status: Active");
+
+            // Save the new entry to the text file
+            textEntryManager.writeEntry(entry);
+            textEntryManager.readAllEntries("Entry "); // refresh entries from file
+
+            // Print success message
+            System.out.println("Entry " + entryId + " saved successfully.\n");
+
+        } catch (Exception e) {
+            // Handle any exceptions that might occur
+            e.printStackTrace(); // full trace for debugging
+            System.out.println("Error writing to file: " + e.getMessage() + "\n");
         }
     }
 
-    public static void main(String[] args) {
-        // System.out.println("hello world");
-        VehicleDataBase vehicleDB = new VehicleDataBase(50);
-        vehicleDB.selectMenuItem();
+    /**
+     * Removes a vehicle from the database.
+     * <p>
+     * The user is first prompted to enter the registration number of the vehicle to be removed.
+     * </p>
+     * <p>
+     * The user is then asked to enter the driver ID, registration number, type, mileage, and fuel usage of the vehicle.
+     * The user is asked to enter the driver ID until a valid one is entered.
+     * The user is asked to enter the registration number until a valid one is entered.
+     * The user is asked to enter the type until a valid one is entered.
+     * The user is asked to enter the mileage until a valid one is entered.
+     * The user is asked to enter the fuel usage until a valid one is entered.
+     * </p>
+     * <p>
+     * If the vehicle is found, the user is asked to confirm the removal.
+     * </p>
+     * <p>
+     * If the user confirms, the vehicle is removed from the database.
+     * </p>
+     */
+    /**
+     * This method removes a vehicle from the database based on the user's input.
+     * The method first prompts the user to enter the registration number of the vehicle.
+     * It then asks the user to enter the driver ID, registration number, type, mileage, and fuel usage of the vehicle.
+     * It then asks the user to enter the driver ID until a valid one is entered.
+     * It then asks the user to enter the registration number until a valid one is entered.
+     * It then asks the user to enter the type until a valid one is entered.
+     * It then asks the user to enter the mileage until a valid one is entered.
+     * It then asks the user to enter the fuel usage until a valid one is entered.
+     * If the vehicle is found, the user is asked to confirm the removal.
+     * If the user confirms, the vehicle is removed from the database.
+     * @throws IOException if an error occurs while reading or writing to the file
+     */
+    public void removeVehicle() throws IOException {
+        // Prompt the user to enter the registration number of the vehicle to be removed.
+        System.out.println("Please enter the registration number:");
+        userStringInput = iv.validityString(scanner);
+        CustomArrayList<Object> results = textEntryManager.searchByField("Registration Number", userStringInput);
+
+        // Refine the search by type if there are multiple results.
+        if (results.size() > 1) {
+            searchByType.printMenu();
+            int userChoice = iv.validity(scanner, searchByType.size());
+            String target = switch (userChoice) {
+                case 1 -> "truck";
+                case 2 -> "van";
+                default -> null;
+            };
+            if (target != null) {
+                CustomArrayList<Object> typeCandidates = textEntryManager.searchByField("Type", target);
+                results = textEntryManager.refineByHeaderMatch(results, typeCandidates);
+            }
+        }
+
+        // Refine the search by driver ID if there are multiple results.
+        if (results.size() > 1) {
+            System.out.println("Please enter the driver ID: ");
+            userStringInput = iv.validityString(scanner);
+            CustomArrayList<Object> driverCandidates = textEntryManager.searchByField("Driver ID", userStringInput);
+            results = textEntryManager.refineByHeaderMatch(results, driverCandidates);
+        }
+
+        // Refine the search by maintenance history if there are multiple results.
+        if (results.size() > 1) {
+            System.out.println("Multiple entries still match. Refining by maintenance history...");
+            System.out.println("Please enter the maintenance history to search by.");
+            userStringInput = iv.validityString(scanner);
+
+            // Block "null" from producing matches
+            if (!"null".equalsIgnoreCase(userStringInput)) {
+                CustomArrayList<Object> maintenanceCandidates = textEntryManager
+                        .searchByField("Vehicle maintenance history", userStringInput);
+                results = textEntryManager.refineByHeaderMatch(results, maintenanceCandidates);
+            } else {
+                System.out.println("Skipping 'null' maintenance history refinement.");
+            }
+        }
+
+        // Refine the search by mileage range if there are multiple results.
+        if (results.size() > 1) {
+            System.out.println("Refining by mileage range...");
+            double low = iv.validityDouble(scanner);
+            double high = iv.validityDouble(scanner);
+            CustomArrayList<Object> range = textEntryManager.searchByRange("Mileage", low, high);
+            results = textEntryManager.refineByHeaderMatch(results, range);
+        }
+
+        // Refine the search by fuel usage range if there are multiple results.
+        if (results.size() > 1) {
+            System.out.println("Refining by fuel usage range...");
+            double low = iv.validityDouble(scanner);
+            double high = iv.validityDouble(scanner);
+            CustomArrayList<Object> range = textEntryManager.searchByRange("Fuel Usage", low, high);
+            results = textEntryManager.refineByHeaderMatch(results, range);
+        }
+
+        // If the vehicle is found, ask the user to confirm the removal.
+        if (results.size() == 1) {
+            String header = ((CustomArrayList<?>) results.getElement(0)).getElement(0).toString();
+            String entryId = header.replace("Entry ", "").trim();
+            System.out.print("Confirm remove for Entry " + entryId + "? (yes/no): ");
+            String resp = scanner.nextLine().trim().toLowerCase();
+            if (resp.equals("yes")) {
+                try {
+                    textEntryManager.markDeleted(entryId, "Status");
+                    System.out.println("Entry " + entryId + " deleted.");
+                } catch (IOException e) {
+                    System.out.println("Error updating file: " + e.getMessage());
+                }
+            } else {
+                System.out.println("Remove cancelled.\n");
+            }
+        } else if (results.isEmpty()) {
+            System.out.println("No matching vehicle found after refinement.\n");
+        } else {
+            System.out.println("Still multiple entries. Manual review required.\n");
+        }
     }
+
+    /**
+     * Check if a given driverID exists in driverDetails.txt and is not deleted.
+     * Returns true only if an active entry with that ID is found.
+     * @param driverID the driver ID to search for
+     * @return true if the driver ID exists and is not deleted, false otherwise
+     */
+    public boolean doesDriverExist(String driverID) {
+        try {
+            // Create a TextEntryManager to read the driverDetails.txt file
+            TextEntryManager driverFinder = new TextEntryManager("LogisticsProject/src/TXTDatabase/",
+                    "LogisticsProject/src/TXTDatabase/driverDetails.txt", "Entry ");
+
+            // Read all lines in the file
+            CustomArrayList<String> allLines = driverFinder.readAllLines();
+
+            // Iterate over all lines in the file
+            for (int i = 0; i < allLines.size(); i++) {
+                String line = allLines.getElement(i);
+                if (line.startsWith("Entry ")) {
+                    // Check if the current entry matches the given driver ID
+                    boolean idMatch = false;
+                    String status = "Active";
+                    // Iterate over the lines in the current entry
+                    while (i < allLines.size() - 1) {
+                        line = allLines.getElement(++i);
+                        // Check if the line contains the driver ID
+                        if (line.startsWith("Driver ID:")) {
+                            String id = line.substring("Driver ID:".length()).trim();
+                            idMatch = id.equalsIgnoreCase(driverID);
+                            continue;
+                        }
+                        // Check if the line contains the status
+                        if (line.startsWith("Status:")) {
+                            status = line.substring("Status:".length()).trim();
+                            // If the entry matches the given ID and is not deleted, return true
+                            if (idMatch && !status.equalsIgnoreCase("Deleted")) {
+                                return true;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // Print an error message if an IOException occurs
+            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
+        }
+        // Return false if no matching entry is found
+        return false;
+    }
+
+    /**
+     * Main entry point for the Adom Logistics Vehicle Database system.
+     * 
+     * @param args Command line arguments (not used)
+     * @throws IOException If an I/O error occurs while reading or writing to a file
+     */
+    public static void main(String[] args) throws IOException {
+        VehicleDataBase vdb = new VehicleDataBase(50);
+        vdb.selectMenuItem();
+    }
+
 }
-// 1. Vehicle Database
-// o Use a tree or hash table to organize vehicles by type or mileage.
