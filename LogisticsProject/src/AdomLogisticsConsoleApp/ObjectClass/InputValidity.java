@@ -101,6 +101,29 @@ public class InputValidity {
     }
 
     /**
+     * Reads and validates a string input from the user, ensuring it matches a
+     * specific regular expression (10-16 digits).
+     * <p>
+     * Continues prompting until the input is a valid phone number.
+     * </p>
+     *
+     * @param scanner the Scanner to read from
+     */
+    public String validityPhoneString(Scanner scanner) {
+        while (true) {
+            String s = scanner.nextLine().trim();
+            if (s.matches("\\d{10,16}")) {
+                userStringInput = s;
+                trueFalse = true;
+                break;
+            } else {
+                System.out.println("Invalid phone number. Enter 10–16 digits only.");
+            }
+        }
+        return userStringInput;
+    }
+
+    /**
      * Reads and validates a non-empty string from the user.
      * <p>
      * Trims whitespace to determine emptiness but returns the raw user-entered

@@ -92,7 +92,7 @@ public class SinglyLinkedList<E> {
 
     public NodeElements<E> getNodeAt(int i) {
         if (i < 0 || i >= size) {
-            return null;
+            throw new IndexOutOfBoundsException("Index: " + i + ", Size: " + size);
         }
         NodeElements<E> current = head;
         int index = 0;

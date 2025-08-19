@@ -403,4 +403,54 @@ public class TextEntryManager {
         return temp;
     }
 
+    /**
+     * Check if a given driverID exists in driverDetails.txt and is not deleted.
+     * Returns true only if an active entry with that ID is found.
+     * @param driverID the driver ID to search for
+     * @return true if the driver ID exists and is not deleted, false otherwise
+     */
+    public boolean doesDriverExist(String driverID) {
+        try {
+            // Create a TextEntryManager to read the driverDetails.txt file
+            TextEntryManager driverFinder = new TextEntryManager("LogisticsProject/src/TXTDatabase/",
+                    "LogisticsProject/src/TXTDatabase/driverDetails.txt", "Entry ");
+
+            // Read all lines in the file
+            CustomArrayList<String> allLines = driverFinder.readAllLines();
+
+            // Iterate over all lines in the file
+            for (int i = 0; i < allLines.size(); i++) {
+                String line = allLines.getElement(i);
+                if (line.startsWith("Entry ")) {
+                    // Check if the current entry matches the given driver ID
+                    boolean idMatch = false;
+                    String status = "Active";
+                    // Iterate over the lines in the current entry
+                    while (i < allLines.size() - 1) {
+                        line = allLines.getElement(++i);
+                        // Check if the line contains the driver ID
+                        if (line.startsWith("Driver ID:")) {
+                            String id = line.substring("Driver ID:".length()).trim();
+                            idMatch = id.equalsIgnoreCase(driverID);
+                            continue;
+                        }
+                        // Check if the line contains the status
+                        if (line.startsWith("Status:")) {
+                            status = line.substring("Status:".length()).trim();
+                            // If the entry matches the given ID and is not deleted, return true
+                            if (idMatch && !status.equalsIgnoreCase("Deleted")) {
+                                return true;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // Print an error message if an IOException occurs
+            System.out.println("Error reading driverDetails.txt: " + e.getMessage());
+        }
+        // Return false if no matching entry is found
+        return false;
+    }
 }
