@@ -1,18 +1,23 @@
 package AdomLogisticsConsoleApp.ObjectClass;
 
 public class Driver {
-    private String driverID;
-    private String name;
+    public String driverID;
+    public String name;
     private String licenseNumber;
     private String phoneNumber;
     private String emailAddress;
     private String address;
-    private double proximity;
-    private boolean assigned;
+    public double proximity;
+    public boolean assigned;
     private String assignedRoutes;
     private int delayCount;
-    private String infractions;
-    private String status;
+    public String infractions;
+    public String status;
+    private int experienceScore;
+    public int lineIdx;
+    public int delays;
+    public int routes;
+    public int numInfractions;
 
     /**
      * Full constructor for Driver.
@@ -43,7 +48,26 @@ public class Driver {
         this.status = status;
     }
 
+    public Driver(String id, double proximity, int experienceScore, int lineIdx, String name, int delays,
+            int numInfractions, int routes) {
+        this.driverID = id;
+        this.proximity = proximity;
+        this.experienceScore = experienceScore;
+        this.lineIdx = lineIdx;
+        this.name = name;
+        this.delays = delays;
+        this.numInfractions = numInfractions;
+        this.routes = routes;
+    }
     // Getters and setters for every field
+
+    public Driver() {
+    }
+
+    public Driver(String driverID2, double proximity2, int i, int entryStart, String string, int delays2,
+            String infractions2, int routes2) {
+        //TODO Auto-generated constructor stub
+    }
 
     public String getDriverID() {
         return driverID;

@@ -173,7 +173,7 @@ public class TextEntryManager {
      * @param allLines the list of lines to write to the file
      * @throws IOException if an I/O error occurs
      */
-    private void writeAllLines(CustomArrayList<String> allLines) throws IOException {
+    public void writeAllLines(CustomArrayList<String> allLines) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToFile))) {
             for (int i = 0; i < allLines.size(); i++) {
                 if (i < allLines.size()) { // Add this check
@@ -412,8 +412,8 @@ public class TextEntryManager {
     public boolean doesDriverExist(String driverID) {
         try {
             // Create a TextEntryManager to read the driverDetails.txt file
-            TextEntryManager driverFinder = new TextEntryManager("LogisticsProject/src/TXTDatabase/",
-                    "LogisticsProject/src/TXTDatabase/driverDetails.txt", "Entry ");
+            TextEntryManager driverFinder = new TextEntryManager("LogisticsProject/src/finalTxtDatabase/",
+                    "LogisticsProject/src/finalTxtDatabase/drivers.txt", "Entry ");
 
             // Read all lines in the file
             CustomArrayList<String> allLines = driverFinder.readAllLines();
@@ -452,5 +452,24 @@ public class TextEntryManager {
         }
         // Return false if no matching entry is found
         return false;
+    }
+
+    public TxtEntry getEntry(String id) throws IOException {
+        CustomArrayList<TxtEntry> entries = readAllEntries(lineStarter);
+        for (int i = 0; i < entries.size(); i++) {
+            TxtEntry e = entries.getElement(i);
+            String idField = e.fields.get("Driver ID");
+            if (!e.deleted && id.equalsIgnoreCase(idField)) {
+                return e;
+            }
+        }
+        return null;
+    }
+    
+    public CustomArrayList<TxtEntry> getEntries() {
+        if (entries == null) {
+            entries = new CustomArrayList<>();
+        }
+        return entries;
     }
 }

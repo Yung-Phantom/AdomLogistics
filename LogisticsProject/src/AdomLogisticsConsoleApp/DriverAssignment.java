@@ -148,7 +148,7 @@ public class DriverAssignment {
         String driverID = scanner.nextLine().trim();
 
         // Check if driver exists in driverDetails.txt and get details
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File detailsFile = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
         if (!detailsFile.exists()) {
             System.out.println("No driver details found.");
             return;
@@ -243,8 +243,8 @@ public class DriverAssignment {
      */
     private void assignDriverMenu() {
         // New logic: maintain two queues (proximity and experience)
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
-        File driverStorage = new File("LogisticsProject/src/finalDatabase/drivers.txt").getAbsoluteFile();
+        File detailsFile = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
+        File driverStorage = new File("LogisticsProject/src/finalDatabase/driversHelper.txt").getAbsoluteFile();
         if (!detailsFile.exists()) {
             System.out.println("No driver details found.");
             return;
@@ -321,7 +321,7 @@ public class DriverAssignment {
                 if (line.startsWith("Status: ")) {
                     status = line.substring("Status: ".length()).trim();
                 }
-                if (line.startsWith("--------------------------------------------------")) {
+                if (line.startsWith("----------")) {
                     if (id != null && proximity != Double.MAX_VALUE && !assigned
                             && !status.equalsIgnoreCase("Deleted")) {
                         boolean alreadyInProximity = false;
@@ -480,7 +480,7 @@ public class DriverAssignment {
         while (entryStart > 0 && !allLines.getElement(entryStart).startsWith("Entry"))
             entryStart--;
         while (entryEnd < allLines.size()
-                && !allLines.getElement(entryEnd).startsWith("--------------------------------------------------"))
+                && !allLines.getElement(entryEnd).startsWith("----------"))
             entryEnd++;
         // First, set Last Update: false for all entries
         for (int idx = 0; idx < allLines.size(); idx++) {
@@ -574,92 +574,106 @@ public class DriverAssignment {
     }
 
     public void deliveryInTransit() {
-        File packageDetailsFile = new File("LogisticsProject/src/TXTDatabase/packageDetails.txt").getAbsoluteFile();
-        File driverDetailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
-        File jsonStorageFile = new File("LogisticsProject/src/JSONDatabase/jsonStorage.json").getAbsoluteFile();
+        File packageDetailsFile = new File(
+                "LogisticsProject/src/TXTDatabase/packageDetails.txt")
+                .getAbsoluteFile();
+        File driverDetailsFile = new File(
+                "LogisticsProject/src/finalTxtDatabase/drivers.txt")
+                .getAbsoluteFile();
+        File vehicleDetailsFile = new File(
+                "LogisticsProject/src/finalTxtDatabase/vehicles.txt")
+                .getAbsoluteFile();
+
         String lastDriverID = null;
         String vehicleReg = null;
 
-        // Extract last updated driver ID
+        // 1) Extract last‐updated Driver ID
         try (BufferedReader reader = new BufferedReader(new FileReader(driverDetailsFile))) {
-            StringBuilder content = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
+                sb.append(line).append("\n");
             }
-            String data = content.toString();
+            String data = sb.toString();
             int updateIdx = data.indexOf("Last Update: true");
-            if (updateIdx == -1) {
+            if (updateIdx < 0) {
                 System.out.println("No driver with 'Last Update: true' found.");
                 return;
             }
             int idIdx = data.lastIndexOf("Driver ID: ", updateIdx);
             int idEnd = data.indexOf("\n", idIdx);
-            lastDriverID = data.substring(idIdx + 11, idEnd).trim();
+            lastDriverID = data.substring(
+                    idIdx + "Driver ID: ".length(),
+                    idEnd).trim();
         } catch (IOException e) {
             System.out.println("Error reading driverDetails.txt: " + e.getMessage());
             return;
         }
 
-        if (lastDriverID == null) {
-            System.out.println("Could not extract last updated driver ID.");
-            return;
-        }
+        // 2) Extract vehicle registration from vehicles.txt (plain‐text blocks)
+        try (BufferedReader reader = new BufferedReader(new FileReader(vehicleDetailsFile))) {
+            boolean insideBlock = false;
+            DoublyLinkedList<String> blockLines = new DoublyLinkedList<>();
+            String rawLine;
 
-        // Extract vehicle registration from jsonStorage
-        try (BufferedReader reader = new BufferedReader(new FileReader(jsonStorageFile))) {
-            String line;
-            boolean insideEntry = false;
-            DoublyLinkedList<String> entryLines = new DoublyLinkedList<>();
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (!insideEntry && trimmed.startsWith("\"Entry")) {
-                    insideEntry = true;
-                    entryLines.clear();
-                    entryLines.insertBack(trimmed);
+            while ((rawLine = reader.readLine()) != null) {
+                String trimmed = rawLine.trim();
+
+                // start of a vehicle block
+                if (!insideBlock && trimmed.startsWith("Entry")) {
+                    insideBlock = true;
+                    blockLines.clear();
+                    blockLines.insertBack(trimmed);
                     continue;
                 }
-                if (insideEntry) {
-                    entryLines.insertBack(trimmed);
-                    if (trimmed.equals("]") || trimmed.equals("],")) {
-                        String foundDriverID = null;
+
+                if (insideBlock) {
+                    blockLines.insertBack(trimmed);
+
+                    // end of block marker
+                    if (trimmed.equals("----------")) {
+                        String foundID = null;
                         String foundReg = null;
-                        for (int i = 0; i < entryLines.size(); i++) {
-                            String field = entryLines.getElement(i);
-                            if (field.startsWith("\"driverID\"")) {
-                                int colon = field.indexOf(":");
-                                if (colon != -1) {
-                                    foundDriverID = field.substring(colon + 1).replace("\"", "").replace(",", "")
-                                            .trim();
-                                }
-                            }
-                            if (field.startsWith("\"registrationNumber\"")) {
-                                int colon = field.indexOf(":");
-                                if (colon != -1) {
-                                    foundReg = field.substring(colon + 1).replace("\"", "").replace(",", "").trim();
-                                }
+                        String statusFlag = null;
+
+                        // scan each line in this block
+                        for (int i = 0; i < blockLines.size(); i++) {
+                            String f = blockLines.getElement(i).trim();
+                            if (f.startsWith("Driver ID:")) {
+                                foundID = f.substring("Driver ID:".length()).trim();
+                            } else if (f.startsWith("Registration Number:")) {
+                                foundReg = f.substring("Registration Number:".length()).trim();
+                            } else if (f.startsWith("Status:")) {
+                                statusFlag = f.substring("Status:".length()).trim();
                             }
                         }
-                        if (foundDriverID != null && foundDriverID.equalsIgnoreCase(lastDriverID)) {
+
+                        // only consider active vehicles for our driver
+                        if ("Active".equalsIgnoreCase(statusFlag)
+                                && lastDriverID.equalsIgnoreCase(foundID)) {
                             vehicleReg = foundReg;
                             break;
                         }
-                        insideEntry = false;
-                        entryLines.clear();
+
+                        // reset for next block
+                        insideBlock = false;
+                        blockLines.clear();
                     }
                 }
             }
+
+            if (vehicleReg == null) {
+                System.out.println(
+                        "No active vehicle found for driver ID: " + lastDriverID);
+                return;
+            }
+
         } catch (IOException e) {
-            System.out.println("Error reading jsonStorage.json: " + e.getMessage());
+            System.out.println("Error reading vehicles.txt: " + e.getMessage());
             return;
         }
 
-        if (vehicleReg == null) {
-            System.out.println("No vehicle registration found for driver ID: " + lastDriverID);
-            return;
-        }
-
-        // Update packageDetails
+        // 3) Update first “Pending” package entry
         try {
             DoublyLinkedList<String> allLines = new DoublyLinkedList<>();
             try (BufferedReader reader = new BufferedReader(new FileReader(packageDetailsFile))) {
@@ -675,22 +689,25 @@ public class DriverAssignment {
                 return;
             }
 
+            // patch the package block
             for (int i = 0; i < block.size(); i++) {
-                String line = block.getElement(i).trim();
-                if (line.startsWith("Assigned to:")) {
+                String ln = block.getElement(i).trim();
+                if (ln.startsWith("Assigned to:")) {
                     block.setElement(i, "Assigned to: " + lastDriverID);
-                } else if (line.startsWith("Vehicle Registration:")) {
+                } else if (ln.startsWith("Vehicle Registration:")) {
                     block.setElement(i, "Vehicle Registration: " + vehicleReg);
-                } else if (line.startsWith("Status:")) {
+                } else if (ln.startsWith("Status:")) {
                     block.setElement(i, "Status: In Transit");
                 }
             }
 
+            // overwrite only that block in allLines
             int startIndex = allLines.indexOf(block.getElement(0));
             for (int i = 0; i < block.size(); i++) {
-                allLines.setElement(startIndex + i, block.getElement(i)); // overwrite, not insert
+                allLines.setElement(startIndex + i, block.getElement(i));
             }
 
+            // write updated lines back
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(packageDetailsFile))) {
                 for (int i = 0; i < allLines.size(); i++) {
                     writer.write(allLines.getElement(i));
@@ -699,6 +716,7 @@ public class DriverAssignment {
             }
 
             System.out.println("Package updated to 'In Transit' for driver ID: " + lastDriverID);
+
         } catch (IOException e) {
             System.out.println("Error processing packageDetails.txt: " + e.getMessage());
         }
@@ -752,7 +770,7 @@ public class DriverAssignment {
         CustomArrayList<String> block = new CustomArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.getElement(i).trim();
-            if (line.startsWith("Entry")) {
+            if (line.startsWith("Entry ")) {
                 block.clear();
                 block.addElement(lines.getElement(i)); // preserve original line
                 boolean statusMatch = false;
@@ -780,7 +798,7 @@ public class DriverAssignment {
                         }
                     }
 
-                    if (current.trim().startsWith("--------------------------------------------------")) {
+                    if (current.trim().startsWith("----------")) {
                         if (!isDelivered && statusMatch && driverMatch) {
                             return block;
                         } else {
@@ -797,7 +815,7 @@ public class DriverAssignment {
      * Checks if a driver ID exists in driverDetails.txt (supports several formats).
      */
     private boolean driverExistsInDetails(String driverID) {
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File detailsFile = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
         if (!detailsFile.exists())
             return false;
 
@@ -863,7 +881,7 @@ public class DriverAssignment {
 
         // Use the currently assigned route from driverDetails.txt
         String routeID = null;
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File detailsFile = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
         if (detailsFile.exists()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {
                 String line;
@@ -1086,7 +1104,7 @@ public class DriverAssignment {
 
         if (choice) {
             System.out.println("Searching for driver with ID matching '" + userSearchInputString + "'");
-            txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+            txtStorage = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
             try (BufferedReader reader = new BufferedReader(new FileReader(txtStorage))) {
                 String line;
                 boolean insideEntry = false;
@@ -1155,12 +1173,12 @@ public class DriverAssignment {
      * Marks a driver as deleted in driverDetails.txt by unique entry identifier.
      */
     public void updateTxt(String uniqueIdentifier) {
-        txtStorageDir = new File("LogisticsProject/src/TXTDatabase").getAbsoluteFile();
+        txtStorageDir = new File("LogisticsProject/src/finalTxtDatabase").getAbsoluteFile();
         if (!txtStorageDir.exists()) {
             txtStorageDir.mkdirs();
         }
 
-        txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        txtStorage = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
         StringBuilder fileContent = new StringBuilder();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(txtStorage))) {
@@ -1235,7 +1253,7 @@ public class DriverAssignment {
             System.out.println(
                     "Searching for drivers with " + searchString + " matching \"" + userSearchInputString + "\"");
 
-            txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+            txtStorage = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
 
             try (BufferedReader reader = new BufferedReader(new FileReader(txtStorage))) {
                 String line;
@@ -1400,12 +1418,12 @@ public class DriverAssignment {
      * Persists a new driver entry to driverDetails.txt.
      */
     public void saveTXT(CustomArrayList<Object> driverDetails) {
-        txtStorageDir = new File("LogisticsProject/src/TXTDatabase").getAbsoluteFile();
+        txtStorageDir = new File("LogisticsProject/src/finalTxtDatabase").getAbsoluteFile();
         if (!txtStorageDir.exists()) {
             txtStorageDir.mkdirs();
         }
 
-        txtStorage = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        txtStorage = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
 
         int entryCount = 1;
         try {
@@ -1435,7 +1453,7 @@ public class DriverAssignment {
             newEntry.append("Assigned Routes: \n"); // Correct placement
             newEntry.append("Status: Active\n");
             newEntry.append("Last Update: false\n");
-            newEntry.append("--------------------------------------------------\n");
+            newEntry.append("----------\n");
 
             try (FileWriter writer = new FileWriter(txtStorage, true)) {
                 writer.write(newEntry.toString());
@@ -1531,7 +1549,7 @@ public class DriverAssignment {
      * driverDetails.txt.
      */
     private boolean isDriverAssigned(String driverID) {
-        File detailsFile = new File("LogisticsProject/src/TXTDatabase/driverDetails.txt").getAbsoluteFile();
+        File detailsFile = new File("LogisticsProject/src/finalTxtDatabase/drivers.txt").getAbsoluteFile();
         if (!detailsFile.exists())
             return false;
         try (BufferedReader reader = new BufferedReader(new FileReader(detailsFile))) {

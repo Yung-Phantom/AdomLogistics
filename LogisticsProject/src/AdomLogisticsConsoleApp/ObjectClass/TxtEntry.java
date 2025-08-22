@@ -22,7 +22,7 @@ import CustomDataStructures.CustomHashMap;
  *   <li>This class is a data holder; parsing logic (e.g., field extraction) is performed externally.</li>
  * </ul>
  *
- * @author Your Name
+ * @author Adom Logistics
  */
 public class TxtEntry {
 
@@ -66,5 +66,29 @@ public class TxtEntry {
     public TxtEntry(String entryNumber) {
         // Assigns the entry number upon creation
         this.entryNumber = entryNumber;
+    }
+
+    public String getFieldValue(String fieldName) {
+        // implement the logic to retrieve the field value based on the field name
+        // for example:
+        for (int i = 0; i < rawLines.size(); i++) {
+            String line = rawLines.getElement(i);
+            if (line.startsWith(fieldName + ":")) {
+                return line.substring(line.indexOf(":") + 1).trim();
+            }
+        }
+        return null;
+    }
+
+    public int tryGetInt(String fieldName, int defaultValue) {
+        String value = getFieldValue(fieldName);
+        if (value == null || value.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }

@@ -1,5 +1,6 @@
 package AdomLogisticsConsoleApp;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 public class AdomBanner {
@@ -26,7 +27,7 @@ public class AdomBanner {
 
     }
 
-    public void selectMenuItem() {
+    public void selectMenuItem() throws IOException {
         // call the validity method to get the boolean and int that will be used for the
         validity(scanner, bElements.size());
         boolean choice = trueFalse;
