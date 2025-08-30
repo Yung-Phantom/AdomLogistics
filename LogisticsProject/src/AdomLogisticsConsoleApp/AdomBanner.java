@@ -20,8 +20,6 @@ public class AdomBanner {
         bElements.addToMenu("Delivery Tracking");
         bElements.addToMenu("Maintenance Scheduler");
         bElements.addToMenu("Fuel Efficiency Reports");
-        bElements.addToMenu("File Storage");
-        bElements.addToMenu("Search & Sort Features");
         bElements.addToMenu("Exit");
         bElements.printMenu();
 
@@ -60,18 +58,9 @@ public class AdomBanner {
                     fuelEfficiencyReports.selectMenuItem();
                     break;
                 case 6:
-                    FileStorage fileStorage = new FileStorage(width);
-                    fileStorage.selectMenuItem();
-                    break;
-                case 7:
-                    SearchSortFeatures searchSortFeatures = new SearchSortFeatures(width);
-                    searchSortFeatures.selectMenuItem();
-                    break;
-                case 8:
                     System.out.println("Exiting Adom Logistics System. Goodbye!");
                     scanner.close();
                     break;
-
             }
         }
     }
